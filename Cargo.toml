@@ -11,8 +11,10 @@ crate-type = ["staticlib"]
 
 [dependencies]
 algebra = {version = "0.1.0", git = "https://github.com/ZencashOfficial/ginger-lib.git", branch = "development"}
-primitives = {version = "0.1.0", features = ["merkle_tree"], git = "https://github.com/ZencashOfficial/ginger-lib.git", branch = "development"}
+primitives = {version = "0.1.0", features = ["merkle_tree", "signature", "vrf"], git = "https://github.com/ZencashOfficial/ginger-lib.git", branch = "development"}
 proof-systems = {version = "0.1.0", features = ["groth16"], git = "https://github.com/ZencashOfficial/ginger-lib.git", branch = "development"}
+
+demo-circuit = {version = "0.1.0", git = "https://github.com/HorizenLabs/zendoo-sc-cryptolib"}
 
 rand = { version = "0.7" }
 libc = "0.2"
