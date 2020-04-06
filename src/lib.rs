@@ -26,7 +26,7 @@ use primitives::{
 };
 
 use proof_systems::groth16::{
-    Parameters, Proof, prover::create_random_proof,
+    Proof, prover::create_random_proof,
     verifier::verify_proof, prepare_verifying_key,
 };
 
@@ -244,19 +244,11 @@ pub extern "C" fn zendoo_serialize_sk(
     result:        *mut [c_uchar; FS_SIZE]
 ) -> bool
 {
-    if sk.is_null() {
-        set_last_error(Box::new(NullPointerError(format!("Null sk"))), NULL_PTR_ERROR);
-        return false
-    }
-    let sk = unsafe { &*sk };
-    match sk.write(&mut (unsafe { &mut *result })[..]) {
-        Err(_) => {
-            let err = IoError::new(ErrorKind::InvalidData, format!("result should be {} bytes", FS_SIZE));
-            set_last_error(Box::new(err), IO_ERROR);
-            false
-        }
-        Ok(_) => true
-    }
+    let sk = match read_raw_pointer(sk, "sk") {
+        Some(sk) => sk,
+        None => return false
+    };
+    write_to_buffer(sk, &mut (unsafe { &mut *result })[..], FS_SIZE)
 }
 
 #[no_mangle]
@@ -264,14 +256,10 @@ pub extern "C" fn zendoo_deserialize_sk(
     sk_bytes:    *const [c_uchar; FS_SIZE]
 ) -> *mut Fs
 {
-    //Read pk
-    let sk_bytes = unsafe{&* sk_bytes};
-    let sk = match Fs::read(&sk_bytes[..]) {
-        Ok(fe) => fe,
-        Err(e) => {
-            set_last_error(Box::new(e), IO_ERROR);
-            return null_mut()
-        },
+    //Read sk
+    let sk = match read_from_buffer(&(unsafe { &*sk_bytes })[..], FS_SIZE) {
+        Some(sk) => sk,
+        None => return null_mut(),
     };
 
     Box::into_raw(Box::new(sk))
@@ -502,7 +490,7 @@ pub extern "C" fn ginger_mt_path_free(path: *mut GingerMerkleTreePath) {
 #[no_mangle]
 pub extern "C" fn zendoo_schnorr_keygen() -> KeyPair
 {
-    let mut rng = OsRng::default();
+    let mut rng = OsRng;
     let (pk, sk) = SchnorrSigScheme::keygen(&mut rng);
     KeyPair {
         pk: Box::into_raw(Box::new(pk.into_affine())),
@@ -515,12 +503,11 @@ pub extern "C" fn zendoo_schnorr_get_pk(
     sk: *const Fs
 ) -> *mut G1Affine
 {
-    if sk.is_null() {
-        let e = Box::new(NullPointerError(format!("Null sk")));
-        set_last_error(e, NULL_PTR_ERROR);
-        return null_mut()
-    }
-    let pk = SchnorrSigScheme::get_public_key(unsafe {&*sk});
+    let sk = match read_raw_pointer(sk, "schnorr sk"){
+        Some(sk) => sk,
+        None => return null_mut()
+    };
+    let pk = SchnorrSigScheme::get_public_key(sk);
     Box::into_raw(Box::new(pk.into_affine()))
 }
 
@@ -529,12 +516,11 @@ pub extern "C" fn zendoo_schnorr_key_verify(
     pk: *const G1Affine
 ) -> bool
 {
-    if pk.is_null() {
-        let e = Box::new(NullPointerError(format!("Null pk")));
-        set_last_error(e, NULL_PTR_ERROR);
-        return false
-    }
-    SchnorrSigScheme::keyverify(&(unsafe { &* pk}.into_projective()))
+    let pk = match read_raw_pointer(pk, "schnorr pk"){
+        Some(pk) => pk,
+        None => return false
+    };
+    SchnorrSigScheme::keyverify(&(pk.into_projective()))
 }
 
 #[no_mangle]
@@ -544,10 +530,10 @@ pub extern "C" fn zendoo_schnorr_sign(
     keypair:     KeyPair
 ) -> *mut SchnorrSig
 {
-    let mut rng = OsRng::default();
+    let mut rng = OsRng;
 
     //Read message as field elements
-    let fes = match read_double_raw_pointer(message, message_len){
+    let fes = match read_double_raw_pointer(message, message_len, "field element"){
         Some(fes) => fes,
         None => return null_mut()
     };
@@ -573,26 +559,22 @@ pub extern "C" fn zendoo_schnorr_verify(
 ) -> bool
 {
     //Read message as field elements
-    let fes = match read_double_raw_pointer(message, message_len){
+    let fes = match read_double_raw_pointer(message, message_len, "field element"){
         Some(fes) => fes,
         None => return false
     };
 
     //Read pk
-    if pk.is_null(){
-        let e = Box::new(NullPointerError(format!("Null Pk")));
-        set_last_error(e, NULL_PTR_ERROR);
-        return false
-    }
-    let pk = unsafe{ &*pk }.into_projective();
+    let pk = match read_raw_pointer(pk, "schnorr pk") {
+        Some(pk) => pk.into_projective(),
+        None => return false
+    };
 
     //Read sig
-    if sig.is_null(){
-        let e = Box::new(NullPointerError(format!("Null sig")));
-        set_last_error(e, NULL_PTR_ERROR);
-        return false
-    }
-    let sig = unsafe{ &*sig };
+    let sig = match read_raw_pointer(sig, "schnorr sig") {
+        Some(sig) => sig,
+        None => return false
+    };
 
     //Verify sig
     match SchnorrSigScheme::verify(&pk, fes.as_slice(), sig) {
@@ -613,19 +595,11 @@ pub extern "C" fn zendoo_serialize_schnorr_sig(
     result: *mut [c_uchar; SIG_SIZE],
 ) -> bool
 {
-    if sig.is_null() {
-        set_last_error(Box::new(NullPointerError(format!("Null sig"))), NULL_PTR_ERROR);
-        return false
-    }
-    let sig = unsafe { &*sig };
-    match sig.write(&mut (unsafe { &mut *result })[..]) {
-        Err(_) => {
-            let err = IoError::new(ErrorKind::InvalidData, format!("result should be {} bytes", SIG_SIZE));
-            set_last_error(Box::new(err), IO_ERROR);
-            false
-        }
-        Ok(_) => true
-    }
+    let sig = match read_raw_pointer(sig, "schnorr sig") {
+        Some(sig) => sig,
+        None => return false
+    };
+    write_to_buffer(sig, &mut (unsafe { &mut *result })[..], SIG_SIZE)
 }
 
 #[no_mangle]
@@ -634,13 +608,9 @@ pub extern "C" fn zendoo_deserialize_schnorr_sig(
 ) -> *mut SchnorrSig
 {
     //Read sig
-    let sig_bytes = unsafe{&* sig_bytes};
-    let sig = match SchnorrSig::read(&sig_bytes[..]) {
-        Ok(sig) => sig,
-        Err(e) => {
-            set_last_error(Box::new(e), IO_ERROR);
-            return null_mut()
-        },
+    let sig = match read_from_buffer(&(unsafe { &*sig_bytes })[..], SIG_SIZE) {
+        Some(sig) => sig,
+        None => return null_mut(),
     };
 
     Box::into_raw(Box::new(sig))
@@ -658,7 +628,7 @@ pub extern "C" fn zendoo_schnorr_sig_free(sig: *mut SchnorrSig)
 #[no_mangle]
 pub extern "C" fn zendoo_ecvrf_keygen() -> KeyPair
 {
-    let mut rng = OsRng::default();
+    let mut rng = OsRng;
     let (pk, sk) = SchnorrSigScheme::keygen(&mut rng);
     KeyPair {
         pk: Box::into_raw(Box::new(pk.into_affine())),
@@ -671,12 +641,11 @@ pub extern "C" fn zendoo_ecvrf_get_pk(
     sk: *const Fs
 ) -> *mut G1Affine
 {
-    if sk.is_null() {
-        let e = Box::new(NullPointerError(format!("Null sk")));
-        set_last_error(e, NULL_PTR_ERROR);
-        return null_mut()
-    }
-    let pk = EcVrfScheme::get_public_key(unsafe {&*sk});
+    let sk = match read_raw_pointer(sk, "ecvrf sk"){
+        Some(sk) => sk,
+        None => return null_mut()
+    };
+    let pk = EcVrfScheme::get_public_key(sk);
     Box::into_raw(Box::new(pk.into_affine()))
 }
 
@@ -685,12 +654,11 @@ pub extern "C" fn zendoo_ecvrf_key_verify(
     pk: *const G1Affine
 ) -> bool
 {
-    if pk.is_null() {
-        let e = Box::new(NullPointerError(format!("Null pk")));
-        set_last_error(e, NULL_PTR_ERROR);
-        return false
-    }
-    EcVrfScheme::keyverify(&(unsafe { &* pk}.into_projective()))
+    let pk = match read_raw_pointer(pk, "ecvrf pk"){
+        Some(pk) => pk,
+        None => return false
+    };
+    SchnorrSigScheme::keyverify(&(pk.into_projective()))
 }
 
 #[no_mangle]
@@ -700,10 +668,10 @@ pub extern "C" fn zendoo_ecvrf_prove(
     keypair:     KeyPair
 ) -> *mut EcVrfProof
 {
-    let mut rng = OsRng::default();
+    let mut rng = OsRng;
 
     //Read message as field elements
-    let fes = match read_double_raw_pointer(message, message_len){
+    let fes = match read_double_raw_pointer(message, message_len, "field element"){
         Some(fes) => fes,
         None => return null_mut()
     };
@@ -712,7 +680,7 @@ pub extern "C" fn zendoo_ecvrf_prove(
 
     //Generate proof for message and return opaque pointer to proof
     match EcVrfScheme::prove(&mut rng, &VRF_GH_PARAMS, &pk.into_projective(), sk, fes.as_slice()) {
-        Ok(sig) => Box::into_raw(Box::new(sig)),
+        Ok(proof) => Box::into_raw(Box::new(proof)),
         Err(e) => {
             set_last_error(e, CRYPTO_ERROR);
             null_mut()
@@ -729,26 +697,22 @@ pub extern "C" fn zendoo_ecvrf_proof_to_hash(
 ) -> *mut Fr
 {
     //Read message as field elements
-    let fes = match read_double_raw_pointer(message, message_len){
+    let fes = match read_double_raw_pointer(message, message_len, "field element"){
         Some(fes) => fes,
         None => return null_mut()
     };
 
     //Read pk
-    if pk.is_null(){
-        let e = Box::new(NullPointerError(format!("Null Pk")));
-        set_last_error(e, NULL_PTR_ERROR);
-        return null_mut()
-    }
-    let pk = unsafe{ &*pk }.into_projective();
+    let pk = match read_raw_pointer(pk, "ecvrf pk") {
+        Some(pk) => pk.into_projective(),
+        None => return null_mut()
+    };
 
     //Read proof
-    if proof.is_null(){
-        let e = Box::new(NullPointerError(format!("Null proof")));
-        set_last_error(e, NULL_PTR_ERROR);
-        return null_mut()
-    }
-    let proof = unsafe{ &*proof };
+    let proof = match read_raw_pointer(proof, "ecvrf proof") {
+        Some(proof) => proof,
+        None => return null_mut()
+    };
 
     //Verify proof and return VRF output
     match EcVrfScheme::proof_to_hash(&VRF_GH_PARAMS, &pk, fes.as_slice(), proof) {
@@ -769,19 +733,11 @@ pub extern "C" fn zendoo_serialize_ecvrf_proof(
     result: *mut [c_uchar; VRF_PROOF_SIZE],
 ) -> bool
 {
-    if proof.is_null() {
-        set_last_error(Box::new(NullPointerError(format!("Null proof"))), NULL_PTR_ERROR);
-        return false
-    }
-    let proof = unsafe { &*proof };
-    match proof.write(&mut (unsafe { &mut *result })[..]) {
-        Err(_) => {
-            let err = IoError::new(ErrorKind::InvalidData, format!("result should be {} bytes", VRF_PROOF_SIZE));
-            set_last_error(Box::new(err), IO_ERROR);
-            false
-        }
-        Ok(_) => true
-    }
+    let proof = match read_raw_pointer(proof, "ecvrf proof") {
+        Some(proof) => proof,
+        None => return false
+    };
+    write_to_buffer(proof, &mut (unsafe { &mut *result })[..], VRF_PROOF_SIZE)
 }
 
 #[no_mangle]
@@ -789,14 +745,10 @@ pub extern "C" fn zendoo_deserialize_ecvrf_proof(
     proof_bytes: *const [c_uchar; VRF_PROOF_SIZE]
 ) -> *mut EcVrfProof
 {
-    //Read proof
-    let proof_bytes = unsafe{&* proof_bytes};
-    let proof = match EcVrfProof::read(&proof_bytes[..]) {
-        Ok(proof) => proof,
-        Err(e) => {
-            set_last_error(Box::new(e), IO_ERROR);
-            return null_mut()
-        },
+    //Read sig
+    let proof = match read_from_buffer(&(unsafe { &*proof_bytes })[..], VRF_PROOF_SIZE) {
+        Some(proof) => proof,
+        None => return null_mut(),
     };
 
     Box::into_raw(Box::new(proof))
@@ -832,51 +784,50 @@ pub extern "C" fn zendoo_create_naive_threshold_sig_proof (
 ) -> *mut GingerProof {
 
     //Load params from file
-    let params = read_params(params_path, params_path_len);
+    let params = match read_from_file(params_path, params_path_len, "parameters"){
+        Some(params) => params,
+        None => return null_mut()
+    };
 
     //Read pks and map them into Options
-    let pks = match read_double_raw_pointer(pks, pks_len){
+    let pks = match read_double_raw_pointer(pks, pks_len, "pk"){
         Some(pks) => pks.iter().map(|pk| Some(pk.into_projective())).collect::<Vec<_>>(),
         None => return null_mut()
     };
 
     //Read sigs and map them into Options
-    let sigs = match read_double_raw_pointer(sigs, sigs_len) {
+    let sigs = match read_double_raw_pointer(sigs, sigs_len, "sig") {
         Some(sigs) => sigs.iter().map(|&sig|Some(sig)).collect::<Vec<_>>(),
         None => return null_mut(),
     };
 
     //Read threshold
-    if threshold.is_null() {
-        set_last_error(Box::new(NullPointerError(format!("Null threshold"))), NULL_PTR_ERROR);
-        return null_mut()
-    }
-    let threshold = unsafe { *threshold };
+    let threshold = match read_raw_pointer(threshold, "threshold"){
+        Some(threshold) => *threshold,
+        None => return null_mut(),
+    };
 
     //Read b, convert to bits, skip the required leading zeros and map them into Options
-    if b.is_null() {
-        set_last_error(Box::new(NullPointerError(format!("Null b"))), NULL_PTR_ERROR);
-        return null_mut()
-    }
-    let b = unsafe { &*b };
+    let b = match read_raw_pointer(b, "b"){
+        Some(b) => b,
+        None => return null_mut(),
+    };
     let b_len = (n.next_power_of_two() as u64).trailing_zeros() as usize;
     let b_bits = b.write_bits();
     let to_skip = Fr::size_in_bits() - (b_len + 1);
     let b = b_bits[to_skip..].to_vec().iter().map(|&b| Some(b)).collect::<Vec<_>>();
 
     //Read message
-    if message.is_null() {
-        set_last_error(Box::new(NullPointerError(format!("Null message"))), NULL_PTR_ERROR);
-        return null_mut()
-    }
-    let message = unsafe { *message };
+    let message = match read_raw_pointer(message, "message"){
+        Some(message) => *message,
+        None => return null_mut(),
+    };
 
     //Read hash commitment
-    if hash_commitment.is_null() {
-        set_last_error(Box::new(NullPointerError(format!("Null hash commitment"))), NULL_PTR_ERROR);
-        return null_mut()
-    }
-    let hash_commitment = unsafe { *hash_commitment };
+    let hash_commitment = match read_raw_pointer(hash_commitment, "hash commitment"){
+        Some(hash) => *hash,
+        None => return null_mut(),
+    };
 
     //Build circuit
     let c = NaiveTresholdSignature::<Fr>::new(
@@ -884,7 +835,7 @@ pub extern "C" fn zendoo_create_naive_threshold_sig_proof (
     );
 
     //Create proof
-    let mut rng = OsRng::default();
+    let mut rng = OsRng;
     match create_random_proof(c, &params, &mut rng) {
         Ok(proof) => Box::into_raw(Box::new(proof)),
         Err(_) => return null_mut(),
@@ -899,7 +850,7 @@ pub extern "C" fn zendoo_compute_keys_hash_commitment(
 {
 
     //Read pks
-    let pks_x = match read_double_raw_pointer(pks, pks_len) {
+    let pks_x = match read_double_raw_pointer(pks, pks_len, "pk") {
         Some(pks) => pks.iter().map(|&pk| pk.x).collect::<Vec<_>>(),
         None => return null_mut()
     };
@@ -960,20 +911,10 @@ pub extern "C" fn zendoo_pk_assert_eq(
 pub extern "C" fn zendoo_schnorr_sig_assert_eq(
     sig_1: *const SchnorrSig,
     sig_2: *const SchnorrSig,
-) -> bool
-{
-    let sig_1 = unsafe {&* sig_1};
-    let sig_2 = unsafe {&* sig_2};
-    sig_1 == sig_2
-}
+) -> bool { check_equal(sig_1, sig_2) }
 
 #[no_mangle]
 pub extern "C" fn zendoo_ecvrf_proof_assert_eq(
     proof_1: *const EcVrfProof,
     proof_2: *const EcVrfProof,
-) -> bool
-{
-    let proof_1 = unsafe {&* proof_1};
-    let proof_2 = unsafe {&* proof_2};
-    proof_1 == proof_2
-}
+) -> bool { check_equal(proof_1, proof_2) }
