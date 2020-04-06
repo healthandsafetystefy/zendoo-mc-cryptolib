@@ -231,6 +231,8 @@ extern "C" {
     //Get an opaque pointer to a random field element
     field_t* zendoo_get_random_field(void);
 
+    void zendoo_print_field(const field_t* field);
+
     bool zendoo_field_assert_eq(
         const field_t* field_1,
         const field_t* field_2

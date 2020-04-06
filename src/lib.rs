@@ -2,7 +2,8 @@ use algebra::{fields::mnt4753::{Fr, Fq as Fs}, curves::{
     mnt4753::MNT4 as PairingCurve,
     mnt6753::{G1Affine, G1Projective},
     ProjectiveCurve,
-}, bytes::{FromBytes, ToBytes}, UniformRand, AffineCurve};
+}, bytes::{FromBytes, ToBytes}, ToBits,
+    PrimeField, UniformRand, AffineCurve};
 
 use primitives::{
     crh::{
@@ -24,10 +25,16 @@ use primitives::{
     },
 };
 
-use proof_systems::groth16::{Proof, verifier::verify_proof, prepare_verifying_key};
+use proof_systems::groth16::{
+    Parameters, Proof, prover::create_random_proof,
+    verifier::verify_proof, prepare_verifying_key,
+};
 
-use demo_circuit::constants::{
-    VRFParams, VRFWindow,
+use demo_circuit::{
+    naive_threshold_sig::NaiveTresholdSignature,
+    constants::{
+        VRFParams, VRFWindow,
+    },
 };
 
 use rand::rngs::OsRng;
@@ -370,32 +377,6 @@ pub extern "C" fn zendoo_compute_poseidon_hash(
     //Return pointer to hash
     Box::into_raw(Box::new(hash))
 
-}
-
-#[no_mangle]
-pub extern "C" fn zendoo_compute_keys_hash_commitment(
-    pks:        *const *const G1Affine,
-    pks_len:    usize,
-) -> *mut Fr
-{
-
-    //Read pks
-    let pks_x = match read_double_raw_pointer(pks, pks_len, "pk") {
-        Some(pks) => pks.iter().map(|&pk| pk.x).collect::<Vec<_>>(),
-        None => return null_mut()
-    };
-
-    //Compute hash
-    let hash = match FrHash::evaluate(pks_x.as_slice()) {
-        Ok(hash) => hash,
-        Err(e) => {
-            set_last_error(e, CRYPTO_ERROR);
-            return null_mut()
-        },
-    };
-
-    //Return pointer to hash
-    Box::into_raw(Box::new(hash))
 }
 
 // ********************Merkle Tree functions********************
@@ -828,6 +809,114 @@ pub extern "C" fn zendoo_ecvrf_proof_free(proof: *mut EcVrfProof)
     drop(unsafe{ Box::from_raw(proof) });
 }
 
+//*****Naive threshold sig circuit functions******
+
+#[no_mangle]
+pub extern "C" fn zendoo_create_naive_threshold_sig_proof (
+    params_path:        *const u8,
+    params_path_len:    usize,
+    //Witnesses
+    pks:                *const *const G1Affine,
+    pks_len:            usize,
+    sigs:               *const *const SchnorrSig,
+    sigs_len:           usize,
+    threshold:          *const Fr,
+    b:                  *const Fr,
+
+    //Public inputs
+    message:            *const Fr,
+    hash_commitment:    *const Fr, //H(H(pks), threshold)
+
+    //Other
+    n:                   usize,
+) -> *mut GingerProof {
+
+    //Load params from file
+    let params = read_params(params_path, params_path_len);
+
+    //Read pks and map them into Options
+    let pks = match read_double_raw_pointer(pks, pks_len){
+        Some(pks) => pks.iter().map(|pk| Some(pk.into_projective())).collect::<Vec<_>>(),
+        None => return null_mut()
+    };
+
+    //Read sigs and map them into Options
+    let sigs = match read_double_raw_pointer(sigs, sigs_len) {
+        Some(sigs) => sigs.iter().map(|&sig|Some(sig)).collect::<Vec<_>>(),
+        None => return null_mut(),
+    };
+
+    //Read threshold
+    if threshold.is_null() {
+        set_last_error(Box::new(NullPointerError(format!("Null threshold"))), NULL_PTR_ERROR);
+        return null_mut()
+    }
+    let threshold = unsafe { *threshold };
+
+    //Read b, convert to bits, skip the required leading zeros and map them into Options
+    if b.is_null() {
+        set_last_error(Box::new(NullPointerError(format!("Null b"))), NULL_PTR_ERROR);
+        return null_mut()
+    }
+    let b = unsafe { &*b };
+    let b_len = (n.next_power_of_two() as u64).trailing_zeros() as usize;
+    let b_bits = b.write_bits();
+    let to_skip = Fr::size_in_bits() - (b_len + 1);
+    let b = b_bits[to_skip..].to_vec().iter().map(|&b| Some(b)).collect::<Vec<_>>();
+
+    //Read message
+    if message.is_null() {
+        set_last_error(Box::new(NullPointerError(format!("Null message"))), NULL_PTR_ERROR);
+        return null_mut()
+    }
+    let message = unsafe { *message };
+
+    //Read hash commitment
+    if hash_commitment.is_null() {
+        set_last_error(Box::new(NullPointerError(format!("Null hash commitment"))), NULL_PTR_ERROR);
+        return null_mut()
+    }
+    let hash_commitment = unsafe { *hash_commitment };
+
+    //Build circuit
+    let c = NaiveTresholdSignature::<Fr>::new(
+        pks, sigs, Some(threshold), b, Some(message), Some(hash_commitment), n
+    );
+
+    //Create proof
+    let mut rng = OsRng::default();
+    match create_random_proof(c, &params, &mut rng) {
+        Ok(proof) => Box::into_raw(Box::new(proof)),
+        Err(_) => return null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn zendoo_compute_keys_hash_commitment(
+    pks:        *const *const G1Affine,
+    pks_len:    usize,
+) -> *mut Fr
+{
+
+    //Read pks
+    let pks_x = match read_double_raw_pointer(pks, pks_len) {
+        Some(pks) => pks.iter().map(|&pk| pk.x).collect::<Vec<_>>(),
+        None => return null_mut()
+    };
+
+    //Compute hash
+    let hash = match FrHash::evaluate(pks_x.as_slice()) {
+        Ok(hash) => hash,
+        Err(e) => {
+            set_last_error(e, CRYPTO_ERROR);
+            return null_mut()
+        },
+    };
+
+    //Return pointer to hash
+    Box::into_raw(Box::new(hash))
+}
+
 //***************Test functions*******************
 
 fn check_equal<T: Eq>(val_1: *const T, val_2: *const T) -> bool{
@@ -841,6 +930,11 @@ pub extern "C" fn zendoo_get_random_field() -> *mut Fr {
     let mut rng = OsRng;
     let random_f = Fr::rand(&mut rng);
     Box::into_raw(Box::new(random_f))
+}
+
+#[no_mangle]
+pub extern "C" fn zendoo_print_field(field: *const Fr){
+    println!("{:?}", unsafe {&* field});
 }
 
 #[no_mangle]
@@ -861,3 +955,25 @@ pub extern "C" fn zendoo_pk_assert_eq(
     pk_1: *const G1Affine,
     pk_2: *const G1Affine,
 ) -> bool { check_equal(pk_1, pk_2) }
+
+#[no_mangle]
+pub extern "C" fn zendoo_schnorr_sig_assert_eq(
+    sig_1: *const SchnorrSig,
+    sig_2: *const SchnorrSig,
+) -> bool
+{
+    let sig_1 = unsafe {&* sig_1};
+    let sig_2 = unsafe {&* sig_2};
+    sig_1 == sig_2
+}
+
+#[no_mangle]
+pub extern "C" fn zendoo_ecvrf_proof_assert_eq(
+    proof_1: *const EcVrfProof,
+    proof_2: *const EcVrfProof,
+) -> bool
+{
+    let proof_1 = unsafe {&* proof_1};
+    let proof_2 = unsafe {&* proof_2};
+    proof_1 == proof_2
+}
