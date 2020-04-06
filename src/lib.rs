@@ -243,27 +243,13 @@ pub extern "C" fn zendoo_serialize_sk(
     sk:            *const Fs,
     result:        *mut [c_uchar; FS_SIZE]
 ) -> bool
-{
-    let sk = match read_raw_pointer(sk, "sk") {
-        Some(sk) => sk,
-        None => return false
-    };
-    write_to_buffer(sk, &mut (unsafe { &mut *result })[..], FS_SIZE)
-}
+{ serialize_to_buffer(sk, &mut (unsafe { &mut *result })[..], FS_SIZE, "sk") }
 
 #[no_mangle]
 pub extern "C" fn zendoo_deserialize_sk(
     sk_bytes:    *const [c_uchar; FS_SIZE]
 ) -> *mut Fs
-{
-    //Read sk
-    let sk = match read_from_buffer(&(unsafe { &*sk_bytes })[..], FS_SIZE) {
-        Some(sk) => sk,
-        None => return null_mut(),
-    };
-
-    Box::into_raw(Box::new(sk))
-}
+{ deserialize_from_buffer(&(unsafe { &*sk_bytes })[..], FS_SIZE) }
 
 #[no_mangle]
 pub extern "C" fn zendoo_sk_free(sk: *mut Fs)
@@ -594,27 +580,13 @@ pub extern "C" fn zendoo_serialize_schnorr_sig(
     sig: *const SchnorrSig,
     result: *mut [c_uchar; SIG_SIZE],
 ) -> bool
-{
-    let sig = match read_raw_pointer(sig, "schnorr sig") {
-        Some(sig) => sig,
-        None => return false
-    };
-    write_to_buffer(sig, &mut (unsafe { &mut *result })[..], SIG_SIZE)
-}
+{ serialize_to_buffer(sig, &mut (unsafe { &mut *result })[..], SIG_SIZE, "schnorr sig") }
 
 #[no_mangle]
 pub extern "C" fn zendoo_deserialize_schnorr_sig(
     sig_bytes: *const [c_uchar; SIG_SIZE]
 ) -> *mut SchnorrSig
-{
-    //Read sig
-    let sig = match read_from_buffer(&(unsafe { &*sig_bytes })[..], SIG_SIZE) {
-        Some(sig) => sig,
-        None => return null_mut(),
-    };
-
-    Box::into_raw(Box::new(sig))
-}
+{ deserialize_from_buffer(&(unsafe { &*sig_bytes })[..], SIG_SIZE) }
 
 #[no_mangle]
 pub extern "C" fn zendoo_schnorr_sig_free(sig: *mut SchnorrSig)
@@ -732,27 +704,13 @@ pub extern "C" fn zendoo_serialize_ecvrf_proof(
     proof:  *const EcVrfProof,
     result: *mut [c_uchar; VRF_PROOF_SIZE],
 ) -> bool
-{
-    let proof = match read_raw_pointer(proof, "ecvrf proof") {
-        Some(proof) => proof,
-        None => return false
-    };
-    write_to_buffer(proof, &mut (unsafe { &mut *result })[..], VRF_PROOF_SIZE)
-}
+{ serialize_to_buffer(proof, &mut (unsafe { &mut *result })[..], VRF_PROOF_SIZE, "ecvrf proof") }
 
 #[no_mangle]
 pub extern "C" fn zendoo_deserialize_ecvrf_proof(
     proof_bytes: *const [c_uchar; VRF_PROOF_SIZE]
 ) -> *mut EcVrfProof
-{
-    //Read sig
-    let proof = match read_from_buffer(&(unsafe { &*proof_bytes })[..], VRF_PROOF_SIZE) {
-        Some(proof) => proof,
-        None => return null_mut(),
-    };
-
-    Box::into_raw(Box::new(proof))
-}
+{ deserialize_from_buffer(&(unsafe { &*proof_bytes })[..], VRF_PROOF_SIZE) }
 
 #[no_mangle]
 pub extern "C" fn zendoo_ecvrf_proof_free(proof: *mut EcVrfProof)
