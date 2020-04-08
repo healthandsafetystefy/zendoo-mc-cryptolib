@@ -62,6 +62,8 @@ extern "C" {
         sk_t* sk;
     } keypair_t ;
 
+    void zendoo_keypair_free(keypair_t keys);
+
 //SNARK related functions
 
     typedef struct ginger_zk_proof ginger_zk_proof_t;
@@ -137,7 +139,7 @@ extern "C" {
 
     pk_t* zendoo_schnorr_get_pk(const sk_t* sk);
 
-    bool zendoo_schnorr_key_verify(pk_t* pk);
+    bool zendoo_schnorr_key_verify(const pk_t* pk);
 
     schnorr_sig_t* zendoo_schnorr_sign(
         const field_t** message,
@@ -146,10 +148,10 @@ extern "C" {
     );
 
     bool zendoo_schnorr_verify(
-        field_t** message,
+        const field_t** message,
         size_t message_len,
-        pk_t* pk,
-        schnorr_sig_t* sig
+        const pk_t* pk,
+        const schnorr_sig_t* sig
     );
 
     //Get the byte size of sign
@@ -173,9 +175,9 @@ extern "C" {
 
     keypair_t zendoo_ecvrf_keygen(void);
 
-    pk_t* zendoo_ecvrf_get_pk(sk_t* sk);
+    pk_t* zendoo_ecvrf_get_pk(const sk_t* sk);
 
-    bool zendoo_ecvrf_key_verify(pk_t* pk);
+    bool zendoo_ecvrf_key_verify(const pk_t* pk);
 
     ecvrf_proof_t* zendoo_ecvrf_prove(
         const field_t** message,
@@ -184,10 +186,10 @@ extern "C" {
     );
 
     field_t* zendoo_ecvrf_proof_to_hash(
-        field_t** message,
+        const field_t** message,
         size_t message_len,
-        pk_t* pk,
-        ecvrf_proof_t* proof
+        const pk_t* pk,
+        const ecvrf_proof_t* proof
     );
 
     //Get the byte size of a ecvrf proof

@@ -192,7 +192,7 @@ pub extern "C" fn zendoo_serialize_field(
 pub extern "C" fn zendoo_deserialize_field(
     field_bytes:    *const [c_uchar; FR_SIZE]
 ) -> *mut Fr
-{ deserialize_from_buffer(&(unsafe { &*field_bytes })[..], FR_SIZE) }
+{ deserialize_from_buffer(&(unsafe { &*field_bytes })[..95], FR_SIZE) }
 
 #[no_mangle]
 pub extern "C" fn zendoo_field_free(field: *mut Fr)
@@ -207,6 +207,12 @@ pub extern "C" fn zendoo_field_free(field: *mut Fr)
 pub struct KeyPair{
     pk: *mut G1Affine,
     sk: *mut Fs,
+}
+
+#[no_mangle]
+pub extern "C" fn zendoo_keypair_free(keys: KeyPair){
+    drop(unsafe { Box::from_raw(keys.pk) });
+    drop(unsafe { Box::from_raw(keys.sk) });
 }
 
 //***********Pk functions****************
@@ -552,7 +558,7 @@ pub extern "C" fn zendoo_schnorr_verify(
 
     //Read pk
     let pk = match read_raw_pointer(pk, "schnorr pk") {
-        Some(pk) => pk.into_projective(),
+        Some(pk) => pk,
         None => return false
     };
 
@@ -563,7 +569,7 @@ pub extern "C" fn zendoo_schnorr_verify(
     };
 
     //Verify sig
-    match SchnorrSigScheme::verify(&pk, fes.as_slice(), sig) {
+    match SchnorrSigScheme::verify(&pk.into_projective(), fes.as_slice(), sig) {
         Ok(result) => result,
         Err(e) => {
             set_last_error(e, CRYPTO_ERROR);
@@ -676,7 +682,7 @@ pub extern "C" fn zendoo_ecvrf_proof_to_hash(
 
     //Read pk
     let pk = match read_raw_pointer(pk, "ecvrf pk") {
-        Some(pk) => pk.into_projective(),
+        Some(pk) => pk,
         None => return null_mut()
     };
 
@@ -687,7 +693,7 @@ pub extern "C" fn zendoo_ecvrf_proof_to_hash(
     };
 
     //Verify proof and return VRF output
-    match EcVrfScheme::proof_to_hash(&VRF_GH_PARAMS, &pk, fes.as_slice(), proof) {
+    match EcVrfScheme::proof_to_hash(&VRF_GH_PARAMS, &pk.into_projective(), fes.as_slice(), proof) {
         Ok(result) => Box::into_raw(Box::new(result)),
         Err(e) => {
             set_last_error(e, CRYPTO_ERROR);
@@ -761,7 +767,7 @@ pub extern "C" fn zendoo_create_naive_threshold_sig_proof (
 
     //Read threshold
     let threshold = match read_raw_pointer(threshold, "threshold"){
-        Some(threshold) => *threshold,
+        Some(threshold) => threshold,
         None => return null_mut(),
     };
 
@@ -770,26 +776,29 @@ pub extern "C" fn zendoo_create_naive_threshold_sig_proof (
         Some(b) => b,
         None => return null_mut(),
     };
-    let b_len = (n.next_power_of_two() as u64).trailing_zeros() as usize;
-    let b_bits = b.write_bits();
-    let to_skip = Fr::size_in_bits() - (b_len + 1);
-    let b = b_bits[to_skip..].to_vec().iter().map(|&b| Some(b)).collect::<Vec<_>>();
+
+    let b = {
+        let b_len = (n.next_power_of_two() as u64).trailing_zeros() as usize;
+        let b_bits = b.write_bits();
+        let to_skip = Fr::size_in_bits() - (b_len + 1);
+        b_bits[to_skip..].to_vec().iter().map(|&b| Some(b)).collect::<Vec<_>>()
+    };
 
     //Read message
     let message = match read_raw_pointer(message, "message"){
-        Some(message) => *message,
+        Some(message) => message,
         None => return null_mut(),
     };
 
     //Read hash commitment
     let hash_commitment = match read_raw_pointer(hash_commitment, "hash commitment"){
-        Some(hash) => *hash,
+        Some(hash) => hash,
         None => return null_mut(),
     };
 
     //Build circuit
     let c = NaiveTresholdSignature::<Fr>::new(
-        pks, sigs, Some(threshold), b, Some(message), Some(hash_commitment), n
+        pks, sigs, Some(*threshold), b, Some(*message), Some(*hash_commitment), n
     );
 
     //Create proof

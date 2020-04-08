@@ -277,10 +277,182 @@ void proof_test() {
     std::cout<< "Zk proof test...ok" << std::endl;
 }
 
+void schnorr_test() {
+
+    //Get random field element to sign
+    auto field = zendoo_get_random_field();
+
+    //Get new keypair
+    auto kp = zendoo_schnorr_keygen();
+
+    //Verify pk is valid
+    if(!zendoo_schnorr_key_verify(kp.pk)) {
+        print_error("error");
+        std::cout << "Unexpected unverified pk" << std::endl;
+        return;
+    }
+
+    //Test get_pk function
+    auto pk_prime = zendoo_schnorr_get_pk(kp.sk);
+    if(pk_prime == NULL){
+        print_error("error");
+        return;
+    }
+
+    if(!zendoo_pk_assert_eq(kp.pk, pk_prime)) {
+        std::cout << "Unexpected pks mismatch" << std::endl;
+        return;
+    }
+
+    //Sign and verify message
+    auto sig = zendoo_schnorr_sign((const field_t**)&field, 1, kp);
+    if (sig == NULL) {
+        print_error("error");
+        return;
+    }
+
+    if (!zendoo_schnorr_verify((const field_t**)&field, 1, kp.pk, sig)) {
+        print_error("error");
+        std::cout << "Unexpected sig error" << std::endl;
+        return;
+    }
+
+    //Verify sig for another message
+    auto wrong_field = zendoo_get_random_field();
+
+    if (zendoo_schnorr_verify((const field_t**)&wrong_field, 1, kp.pk, sig)) {
+        std::cout << "Unexpected verified sig" << std::endl;
+        return;
+    }
+
+    //Serialize/Deserialize sig
+    auto sig_size = zendoo_get_schnorr_sig_size_in_bytes();
+    if (sig_size != 192) {
+        std::cout << "Unexpected sig size" << std::endl;
+        return;
+    }
+
+    unsigned char sig_bytes[sig_size];
+    if (!zendoo_serialize_schnorr_sig(sig, sig_bytes)){
+        print_error("error");
+        return;
+    }
+
+    auto sig_deserialized = zendoo_deserialize_schnorr_sig(sig_bytes);
+    if (sig_deserialized == NULL) {
+        print_error("error");
+        return;
+    }
+
+    if (!zendoo_schnorr_sig_assert_eq(sig, sig_deserialized)) {
+        std::cout << "Unexpected deserialized sig" << std::endl;
+        return;
+    };
+
+    //Free memory
+    zendoo_field_free(field);
+    zendoo_field_free(wrong_field);
+    zendoo_keypair_free(kp);
+    zendoo_pk_free(pk_prime);
+    zendoo_schnorr_sig_free(sig);
+    zendoo_schnorr_sig_free(sig_deserialized);
+
+    std::cout << "Schnorr sig test..ok" << std::endl;
+}
+
+void ecvrf_test() {
+
+    //Get random field element
+    auto field = zendoo_get_random_field();
+
+    //Get new keypair
+    auto kp = zendoo_ecvrf_keygen();
+
+    //Verify pk is valid
+    if(!zendoo_ecvrf_key_verify(kp.pk)) {
+        print_error("error");
+        std::cout << "Unexpected unverified pk" << std::endl;
+        return;
+    }
+
+    //Test get_pk function
+    auto pk_prime = zendoo_ecvrf_get_pk(kp.sk);
+    if(pk_prime == NULL){
+        print_error("error");
+        return;
+    }
+
+    if(!zendoo_pk_assert_eq(kp.pk, pk_prime)) {
+        std::cout << "Unexpected pks mismatch" << std::endl;
+        return;
+    }
+
+    //Generate proof for message, verify it and get vrf output
+    auto proof = zendoo_ecvrf_prove((const field_t**)&field, 1, kp);
+    if (proof == NULL) {
+        print_error("error");
+        return;
+    }
+
+    auto vrf_out = zendoo_ecvrf_proof_to_hash((const field_t**)&field, 1, kp.pk, proof);
+    if (vrf_out == NULL) {
+        print_error("error");
+        std::cout << "Unexpected proof error" << std::endl;
+        return;
+    }
+
+    //Verify proof for another message
+    auto wrong_field = zendoo_get_random_field();
+
+    auto wrong_vrf_out = zendoo_ecvrf_proof_to_hash((const field_t**)&wrong_field, 1, kp.pk, proof);
+    if (wrong_vrf_out != NULL) {
+        print_error("error");
+        std::cout << "Unexpected verified proof" << std::endl;
+        return;
+    }
+
+    //Serialize/Deserialize proof
+    auto proof_size = zendoo_get_ecvrf_proof_size_in_bytes();
+    if (proof_size != 385) {
+        std::cout << "Unexpected proof size" << std::endl;
+        return;
+    }
+
+    unsigned char proof_bytes[proof_size];
+    if (!zendoo_serialize_ecvrf_proof(proof, proof_bytes)){
+        print_error("error");
+        return;
+    }
+
+    auto proof_deserialized = zendoo_deserialize_ecvrf_proof(proof_bytes);
+    if (proof_deserialized == NULL) {
+        print_error("error");
+        return;
+    }
+
+    if (!zendoo_ecvrf_proof_assert_eq(proof, proof_deserialized)) {
+        std::cout << "Unexpected deserialized proof" << std::endl;
+        return;
+    };
+
+    //Free memory
+    zendoo_field_free(field);
+    zendoo_field_free(wrong_field);
+    zendoo_field_free(vrf_out);
+    zendoo_keypair_free(kp);
+    zendoo_pk_free(pk_prime);
+    zendoo_ecvrf_proof_free(proof);
+    zendoo_ecvrf_proof_free(proof_deserialized);
+
+    std::cout << "Ecvrf test..ok" << std::endl;
+}
+
 int main() {
     field_test();
     pk_test();
     hash_test();
     merkle_test();
     proof_test();
+    schnorr_test();
+    ecvrf_test();
 }
