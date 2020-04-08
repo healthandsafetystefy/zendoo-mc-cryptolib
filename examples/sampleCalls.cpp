@@ -277,6 +277,56 @@ void proof_test() {
     std::cout<< "Zk proof test...ok" << std::endl;
 }
 
+bool _pk_serialization_deserialization_test(pk_t* pk, size_t pk_len) {
+
+    //Serialize and deserialize and check equality
+    unsigned char pk_bytes[pk_len];
+    if (!zendoo_serialize_pk(pk, pk_bytes)){
+        print_error("error");
+        return false;
+    }
+
+    auto pk_deserialized = zendoo_deserialize_pk(pk_bytes);
+    if (pk_deserialized == NULL) {
+        print_error("error");
+        return false;
+    }
+
+    if (!zendoo_pk_assert_eq(pk, pk_deserialized)) {
+        std::cout << "Unexpected deserialized pk" << std::endl;
+        return false;
+    };
+
+    zendoo_pk_free(pk_deserialized);
+
+    return true;
+}
+
+bool _sk_serialization_deserialization_test(sk_t* sk, size_t sk_len) {
+
+    //Serialize and deserialize and check equality
+    unsigned char sk_bytes[sk_len];
+    if (!zendoo_serialize_sk(sk, sk_bytes)){
+        print_error("error");
+        return false;
+    }
+
+    auto sk_deserialized = zendoo_deserialize_sk(sk_bytes);
+    if (sk_deserialized == NULL) {
+        print_error("error");
+        return false;
+    }
+
+    if (!zendoo_sk_assert_eq(sk, sk_deserialized)) {
+        std::cout << "Unexpected deserialized pk" << std::endl;
+        return false;
+    };
+
+    zendoo_sk_free(sk_deserialized);
+
+    return true;
+}
+
 void schnorr_test() {
 
     //Get random field element to sign
@@ -303,6 +353,10 @@ void schnorr_test() {
         std::cout << "Unexpected pks mismatch" << std::endl;
         return;
     }
+
+    //Verify correct pk and sk serialization/deserialization
+    if (!_pk_serialization_deserialization_test(kp.pk, zendoo_get_pk_size_in_bytes())) { return; }
+    if (!_sk_serialization_deserialization_test(kp.sk, zendoo_get_sk_size_in_bytes())) { return; }
 
     //Sign and verify message
     auto sig = zendoo_schnorr_sign((const field_t**)&field, 1, kp);
@@ -386,6 +440,10 @@ void ecvrf_test() {
         std::cout << "Unexpected pks mismatch" << std::endl;
         return;
     }
+
+    //Verify correct pk and sk serialization/deserialization
+    if (!_pk_serialization_deserialization_test(kp.pk, zendoo_get_pk_size_in_bytes())) { return; }
+    if (!_sk_serialization_deserialization_test(kp.sk, zendoo_get_sk_size_in_bytes())) { return; }
 
     //Generate proof for message, verify it and get vrf output
     auto proof = zendoo_ecvrf_prove((const field_t**)&field, 1, kp);

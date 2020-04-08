@@ -192,7 +192,7 @@ pub extern "C" fn zendoo_serialize_field(
 pub extern "C" fn zendoo_deserialize_field(
     field_bytes:    *const [c_uchar; FR_SIZE]
 ) -> *mut Fr
-{ deserialize_from_buffer(&(unsafe { &*field_bytes })[..95], FR_SIZE) }
+{ deserialize_from_buffer(&(unsafe { &*field_bytes })[..], FR_SIZE) }
 
 #[no_mangle]
 pub extern "C" fn zendoo_field_free(field: *mut Fr)
@@ -873,6 +873,12 @@ pub extern "C" fn zendoo_pk_assert_eq(
     pk_1: *const G1Affine,
     pk_2: *const G1Affine,
 ) -> bool { check_equal(pk_1, pk_2) }
+
+#[no_mangle]
+pub extern "C" fn zendoo_sk_assert_eq(
+    sk_1: *const Fs,
+    sk_2: *const Fs,
+) -> bool { check_equal(sk_1, sk_2) }
 
 #[no_mangle]
 pub extern "C" fn zendoo_schnorr_sig_assert_eq(
