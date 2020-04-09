@@ -1,9 +1,17 @@
-use algebra::{fields::mnt4753::{Fr, Fq as Fs}, curves::{
-    mnt4753::MNT4 as PairingCurve,
-    mnt6753::{G1Affine, G1Projective},
-    ProjectiveCurve,
-}, bytes::{FromBytes, ToBytes}, ToBits,
-    PrimeField, UniformRand, AffineCurve};
+use algebra::{
+    biginteger::BigInteger768 as BigInteger,
+    fields::{
+        mnt4753::{Fr, Fq as Fs},
+        PrimeField,
+    },
+    curves::{
+        mnt4753::MNT4 as PairingCurve,
+        mnt6753::{G1Affine, G1Projective},
+        ProjectiveCurve, AffineCurve,
+    },
+    bytes::{FromBytes, ToBytes},
+    UniformRand
+};
 
 use primitives::{
     crh::{
@@ -31,7 +39,9 @@ use proof_systems::groth16::{
 };
 
 use demo_circuit::{
-    naive_threshold_sig::NaiveTresholdSignature,
+    naive_threshold_sig::{
+        NaiveTresholdSignature, generate_parameters, NULL_CONST,
+    },
     constants::{
         VRFParams, VRFWindow,
     },
@@ -731,6 +741,7 @@ pub extern "C" fn zendoo_ecvrf_proof_free(proof: *mut EcVrfProof)
 pub extern "C" fn zendoo_create_naive_threshold_sig_proof (
     params_path:        *const u8,
     params_path_len:    usize,
+
     //Witnesses
     pks:                *const *const G1Affine,
     pks_len:            usize,
@@ -755,13 +766,13 @@ pub extern "C" fn zendoo_create_naive_threshold_sig_proof (
 
     //Read pks and map them into Options
     let pks = match read_double_raw_pointer(pks, pks_len, "pk"){
-        Some(pks) => pks.iter().map(|pk| Some(pk.into_projective())).collect::<Vec<_>>(),
+        Some(pks) => pks.iter().map(|pk| pk.into_projective()).collect::<Vec<_>>(),
         None => return null_mut()
     };
 
     //Read sigs and map them into Options
     let sigs = match read_double_raw_pointer(sigs, sigs_len, "sig") {
-        Some(sigs) => sigs.iter().map(|&sig|Some(sig)).collect::<Vec<_>>(),
+        Some(sigs) => sigs,
         None => return null_mut(),
     };
 
@@ -775,13 +786,6 @@ pub extern "C" fn zendoo_create_naive_threshold_sig_proof (
     let b = match read_raw_pointer(b, "b"){
         Some(b) => b,
         None => return null_mut(),
-    };
-
-    let b = {
-        let b_len = (n.next_power_of_two() as u64).trailing_zeros() as usize;
-        let b_bits = b.write_bits();
-        let to_skip = Fr::size_in_bits() - (b_len + 1);
-        b_bits[to_skip..].to_vec().iter().map(|&b| Some(b)).collect::<Vec<_>>()
     };
 
     //Read message
@@ -798,14 +802,17 @@ pub extern "C" fn zendoo_create_naive_threshold_sig_proof (
 
     //Build circuit
     let c = NaiveTresholdSignature::<Fr>::new(
-        pks, sigs, Some(*threshold), b, Some(*message), Some(*hash_commitment), n
+        pks, sigs, *threshold, *b, *message, *hash_commitment, n
     );
 
     //Create proof
     let mut rng = OsRng;
     match create_random_proof(c, &params, &mut rng) {
         Ok(proof) => Box::into_raw(Box::new(proof)),
-        Err(_) => return null_mut(),
+        Err(e) => {
+            set_last_error(Box::new(e), CRYPTO_ERROR);
+            return null_mut()
+        },
     }
 }
 
@@ -813,14 +820,20 @@ pub extern "C" fn zendoo_create_naive_threshold_sig_proof (
 pub extern "C" fn zendoo_compute_keys_hash_commitment(
     pks:        *const *const G1Affine,
     pks_len:    usize,
+    max_pks:    usize,
 ) -> *mut Fr
 {
 
     //Read pks
-    let pks_x = match read_double_raw_pointer(pks, pks_len, "pk") {
+    let mut pks_x = match read_double_raw_pointer(pks, pks_len, "pk") {
         Some(pks) => pks.iter().map(|&pk| pk.x).collect::<Vec<_>>(),
         None => return null_mut()
     };
+
+    //Add null pks to reach num sig if pks_x.len < num_sig
+    for _ in pks_len..max_pks{
+        pks_x.push(NULL_CONST.null_pk.into_affine().x);
+    }
 
     //Compute hash
     let hash = match FrHash::evaluate(pks_x.as_slice()) {
@@ -848,6 +861,12 @@ pub extern "C" fn zendoo_get_random_field() -> *mut Fr {
     let mut rng = OsRng;
     let random_f = Fr::rand(&mut rng);
     Box::into_raw(Box::new(random_f))
+}
+
+#[no_mangle]
+pub extern "C" fn zendoo_get_field_from_int(num: usize) -> *mut Fr {
+    let f = Fr::from_repr(BigInteger::from(num as u64));
+    Box::into_raw(Box::new(f))
 }
 
 #[no_mangle]
@@ -891,3 +910,50 @@ pub extern "C" fn zendoo_ecvrf_proof_assert_eq(
     proof_1: *const EcVrfProof,
     proof_2: *const EcVrfProof,
 ) -> bool { check_equal(proof_1, proof_2) }
+
+fn write_to_file<T: ToBytes>(to_write: T, file_path: *const u8, file_path_len: usize, struct_type: &str) -> bool {
+    // Read file path
+    let file_path = Path::new(OsStr::from_bytes(unsafe {
+        slice::from_raw_parts(file_path, file_path_len)
+    }));
+
+    // Load struct from file
+    let mut fs = match File::create(file_path) {
+        Ok(file) => file,
+        Err(_) => {
+            let e = IoError::new(ErrorKind::Other, format!("unable to create {} file", struct_type));
+            set_last_error(Box::new(e), IO_ERROR);
+            return false
+        }
+    };
+
+    match to_write.write(&mut fs) {
+        Ok(_) => true,
+        Err(_) => {
+            let e = IoError::new(ErrorKind::InvalidData, format!("unable to serialize {} to file", struct_type));
+            set_last_error(Box::new(e), IO_ERROR);
+            false
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn zendoo_generate_random_naive_threshold_sig_parameters (
+    params_path:        *const u8,
+    params_path_len:    usize,
+    vk_path:            *const u8,
+    vk_path_len:        usize,
+    n:                  usize,
+) -> bool
+{
+    let params = match generate_parameters(n) {
+        Ok(params) => params,
+        Err(e) => {
+            set_last_error(Box::new(e), CRYPTO_ERROR);
+            return false
+        }
+    };
+
+    write_to_file(params.vk.clone(), vk_path, vk_path_len, "vk") &&
+        write_to_file(params, params_path, params_path_len, "params")
+}

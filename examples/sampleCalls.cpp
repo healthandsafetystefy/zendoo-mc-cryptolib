@@ -61,7 +61,7 @@ void pk_test() {
     }
 
     //Check pk hash commitment consistency
-    auto hash_commitment = zendoo_compute_keys_hash_commitment((const pk_t**)&pk_deserialized, 1);
+    auto hash_commitment = zendoo_compute_keys_hash_commitment((const pk_t**)&pk_deserialized, 1, 1);
     if(hash_commitment == NULL){
         print_error("error");
         return;
@@ -203,7 +203,7 @@ void merkle_test() {
     std::cout<< "Merkle test...ok" << std::endl;
 }
 
-void proof_test() {
+void proof_verification_test() {
     //Deserialize zero knowledge proof
 
     //Read proof from file
@@ -274,7 +274,110 @@ void proof_test() {
     //Free proof
     ginger_zk_proof_free(proof);
 
-    std::cout<< "Zk proof test...ok" << std::endl;
+    std::cout<< "Zk proof verification test...ok" << std::endl;
+}
+
+void proof_creation_verification_test(){
+
+    int max_sig = 16;
+
+    //Generate pk and vk
+    if(!zendoo_generate_random_naive_threshold_sig_parameters(
+        (uint8_t*)"../test_files/generated/params",
+        30,
+        (uint8_t*)"../test_files/generated/vk",
+        26,
+        max_sig
+    )){
+        print_error("error");
+        return;
+    }
+
+    //Generate random message to sign
+    auto message = zendoo_get_random_field();
+
+    //Generate keys and signatures
+    int valid_sig = 6;
+    const pk_t* pks[valid_sig];
+    const schnorr_sig_t* sigs[valid_sig];
+
+    for (int i = 0; i < valid_sig; i++){
+        auto kp = zendoo_schnorr_keygen();
+        auto sig = zendoo_schnorr_sign((const field_t**)&message, 1, kp);
+        if (sig == NULL) {
+            print_error("error");
+            return;
+        }
+        auto pk = zendoo_schnorr_get_pk(kp.sk);
+        if (pk == NULL){
+            print_error("error");
+            return;
+        }
+        pks[i] = pk;
+        sigs[i] = sig;
+        zendoo_keypair_free(kp);
+    }
+
+    //Generate other params
+    int threshold = 5;
+    auto threshold_f = zendoo_get_field_from_int(threshold);
+
+    int b = valid_sig - threshold;
+    auto b_field = zendoo_get_field_from_int(b);
+
+    //Compute hash commitment
+    auto pks_hash = zendoo_compute_keys_hash_commitment(pks, valid_sig, max_sig);
+    if(pks_hash == NULL){
+        print_error("error");
+        return;
+    }
+
+    const field_t* hash_input[] = {pks_hash, threshold_f};
+    auto hash_commitment = zendoo_compute_poseidon_hash(hash_input, 2);
+
+    //Free pks_hash, we don't need it anymore
+    zendoo_field_free(pks_hash);
+
+    //Create proof
+    auto proof = zendoo_create_naive_threshold_sig_proof(
+        (uint8_t*)"../test_files/generated/params",
+        30,
+        pks,
+        valid_sig,
+        sigs,
+        valid_sig,
+        threshold_f,
+        b_field,
+        message,
+        hash_commitment,
+        max_sig
+    );
+    if(proof == NULL){
+        print_error("error");
+        return;
+    }
+
+    //Free stuff we don't need anymore
+    for(int i = 0; i < valid_sig; i++){
+        zendoo_schnorr_sig_free((schnorr_sig_t*)sigs[i]);
+        zendoo_pk_free((pk_t*)pks[i]);
+    }
+
+    zendoo_field_free(threshold_f);
+    zendoo_field_free(b_field);
+
+    //Verify proof
+    const field_t* public_inputs[] = {message, hash_commitment};
+
+    if(!verify_ginger_zk_proof((uint8_t*)"../test_files/generated/vk", 26, public_inputs, 2)){
+        print_error("error");
+        return
+    }
+
+    zendoo_field_free(message);
+    zendoo_field_free(hash_commitment);
+
+    std::cout<< "Zk proof creation/verification test...ok" << std::endl;
 }
 
 bool _pk_serialization_deserialization_test(pk_t* pk, size_t pk_len) {
@@ -510,7 +613,8 @@ int main() {
     pk_test();
     hash_test();
     merkle_test();
-    proof_test();
+    proof_verification_test();
     schnorr_test();
     ecvrf_test();
+    proof_creation_verification_test();
 }

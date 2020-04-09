@@ -126,6 +126,7 @@ fn compute_hash_commitment_test() {
     let zendoo_h_cm = zendoo_compute_keys_hash_commitment(
         pks_ptr.as_ptr(),
         16,
+        16,
     );
     assert_eq!(native_h_cm, unsafe{*zendoo_h_cm});
 
@@ -149,6 +150,7 @@ fn compute_hash_commitment_test() {
     //Verify correct hash computation and result not consistent anymore with the native Rust function
     let zendoo_h_cm = zendoo_compute_keys_hash_commitment(
         pks_ptr.as_ptr(),
+        16,
         16,
     );
     assert_ne!(native_h_cm, unsafe{*zendoo_h_cm});

@@ -234,13 +234,16 @@ extern "C" {
 
     field_t* zendoo_compute_keys_hash_commitment(
         const pk_t** pks,
-        size_t pk_num
+        size_t pk_num,
+        size_t max_pks
     );
 
 //Test functions
 
     //Get an opaque pointer to a random field element
     field_t* zendoo_get_random_field(void);
+
+    field_t* zendoo_get_field_from_int(size_t num);
 
     bool zendoo_field_assert_eq(
         const field_t* field_1,
@@ -265,6 +268,14 @@ extern "C" {
     bool zendoo_ecvrf_proof_assert_eq(
         const ecvrf_proof_t* proof_1,
         const ecvrf_proof_t* proof_2
+    );
+
+    bool zendoo_generate_random_naive_threshold_sig_parameters(
+        const uint8_t* params_path,
+        size_t params_path_len,
+        const uint8_t* vk_path,
+        size_t vk_path_len,
+        size_t max_sig
     );
 }
 #endif // ZENDOO_MC_INCLUDE_H_
