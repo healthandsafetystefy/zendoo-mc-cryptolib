@@ -48,6 +48,9 @@ use type_mapping::*;
 pub mod macros;
 use macros::*;
 
+#[macro_use]
+pub mod unwind;
+
 #[cfg(feature = "mc-test-circuit")]
 pub mod mc_test_circuits;
 
@@ -86,33 +89,34 @@ fn parse_path<'a>(
     }))
 }
 
-#[no_mangle]
-pub extern "C" fn zendoo_free_bws(buffer: *mut BufferWithSize) {
+ffi_export!(
+fn zendoo_free_bws(buffer: *mut BufferWithSize) {
     free_buffer_with_size(buffer)
-}
+});
 
 //*********** Commitment Tree functions ****************
 
-#[no_mangle]
-pub extern "C" fn zendoo_commitment_tree_create() -> *mut CommitmentTree {
+ffi_export!(
+fn zendoo_commitment_tree_create() -> *mut CommitmentTree {
     Box::into_raw(Box::new(CommitmentTree::create()))
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_commitment_tree_delete(ptr : *mut CommitmentTree) {
+ffi_export!(
+fn zendoo_commitment_tree_delete(ptr : *mut CommitmentTree) {
     free_pointer(ptr)
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_custom_data_size_in_bytes() -> c_uint {
+ffi_export!(
+fn zendoo_get_sc_custom_data_size_in_bytes() -> c_uint {
     CUSTOM_DATA_MAX_SIZE as u32
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_compute_sc_id(
+
+ffi_export_with_ret_code!(
+fn zendoo_compute_sc_id(
+    ret_code:   &mut CctpErrorCode,
     tx_hash:    *const BufferWithSize,
     pos:        u32,
-    ret_code:   &mut CctpErrorCode,
 ) -> *mut FieldElement
 {
     let rs_tx_hash = try_get_buffer_constant_size!("tx_hash", tx_hash, UINT_256_SIZE, ret_code, null_mut());
@@ -124,10 +128,11 @@ pub extern "C" fn zendoo_compute_sc_id(
             null_mut()
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_commitment_tree_add_scc(
+ffi_export_with_ret_code!(
+fn zendoo_commitment_tree_add_scc(
+    ret_code:                       &mut CctpErrorCode,
     ptr :                           *mut CommitmentTree,
     sc_id:                          *const FieldElement,
     amount:                         u64,
@@ -145,7 +150,6 @@ pub extern "C" fn zendoo_commitment_tree_add_scc(
     constant:                       *const FieldElement,
     cert_vk:                        *const BufferWithSize,
     csw_vk:                         *const BufferWithSize,
-    ret_code:                       &mut CctpErrorCode
 )-> bool
 {
 
@@ -185,10 +189,10 @@ pub extern "C" fn zendoo_commitment_tree_add_scc(
         eprintln!("{:?}", "add_scc() failed!");
     }
     ret
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_commitment_tree_add_fwt(
+ffi_export!(
+fn zendoo_commitment_tree_add_fwt(
     ptr :       *mut CommitmentTree,
     sc_id:      *const FieldElement,
     amount:     u64,
@@ -215,10 +219,10 @@ pub extern "C" fn zendoo_commitment_tree_add_fwt(
         eprintln!("{:?}", "add_fwt() failed!");
     }
     ret
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_commitment_tree_add_bwtr(
+ffi_export!(
+fn zendoo_commitment_tree_add_bwtr(
     ptr:                    *mut CommitmentTree,
     sc_id:                  *const FieldElement,
     sc_fee:                 u64,
@@ -250,10 +254,10 @@ pub extern "C" fn zendoo_commitment_tree_add_bwtr(
         eprintln!("{:?}", "add_bwtr() failed!");
     }
     ret
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_commitment_tree_add_csw(
+ffi_export!(
+fn zendoo_commitment_tree_add_csw(
     ptr :       *mut CommitmentTree,
     sc_id:      *const FieldElement,
     amount:     u64,
@@ -277,10 +281,10 @@ pub extern "C" fn zendoo_commitment_tree_add_csw(
         eprintln!("{:?}", "add_csw() failed !");
     }
     ret
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_commitment_tree_add_cert(
+ffi_export!(
+fn zendoo_commitment_tree_add_cert(
     ptr :                   *mut CommitmentTree,
     sc_id:                  *const FieldElement,
     epoch_number:           u32,
@@ -322,10 +326,10 @@ pub extern "C" fn zendoo_commitment_tree_add_cert(
         eprintln!("{:?}", "add_cert() failed");
     }
     ret
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_commitment_tree_get_commitment(
+ffi_export!(
+fn zendoo_commitment_tree_get_commitment(
     ptr:      *mut CommitmentTree,
     ret_code: &mut CctpErrorCode,
 ) -> *mut FieldElement
@@ -342,13 +346,13 @@ pub extern "C" fn zendoo_commitment_tree_get_commitment(
             null_mut()
         }
     }
-}
+});
 
 //***********Bit Vector functions****************
 
 
-#[no_mangle]
-pub extern "C" fn zendoo_compress_bit_vector(
+ffi_export!(
+fn zendoo_compress_bit_vector(
     buffer:    *const BufferWithSize,
     algorithm: CompressionAlgorithm,
     ret_code:  &mut CctpErrorCode
@@ -374,10 +378,10 @@ pub extern "C" fn zendoo_compress_bit_vector(
             null_mut()
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_decompress_bit_vector(
+ffi_export!(
+fn zendoo_decompress_bit_vector(
     buffer: *const BufferWithSize,
     expected_uncompressed_size: usize,
     ret_code: &mut CctpErrorCode
@@ -402,10 +406,10 @@ pub extern "C" fn zendoo_decompress_bit_vector(
             null_mut()
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_merkle_root_from_compressed_bytes(
+ffi_export!(
+fn zendoo_merkle_root_from_compressed_bytes(
     buffer: *const BufferWithSize,
     expected_uncompressed_size: usize,
     ret_code: &mut CctpErrorCode
@@ -425,16 +429,16 @@ pub extern "C" fn zendoo_merkle_root_from_compressed_bytes(
                 null_mut()
             }
         }
-}
+});
 
 //***********Field functions****************
-#[no_mangle]
-pub extern "C" fn zendoo_get_field_size_in_bytes() -> c_uint {
+ffi_export!(
+fn zendoo_get_field_size_in_bytes() -> c_uint {
     FIELD_SIZE as u32
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_serialize_field(
+ffi_export!(
+fn zendoo_serialize_field(
     field_element: *const FieldElement,
     result: *mut [c_uchar; FIELD_SIZE],
     ret_code: &mut CctpErrorCode
@@ -442,29 +446,28 @@ pub extern "C" fn zendoo_serialize_field(
 {
     try_serialize_from_raw_pointer!("field_element", field_element, &mut (unsafe { &mut *result })[..], None, ret_code, false);
     true
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_deserialize_field(
+ffi_export!(
+fn zendoo_deserialize_field(
     field_bytes: *const [c_uchar; FIELD_SIZE],
     ret_code: &mut CctpErrorCode
 ) -> *mut FieldElement
 {
     try_deserialize_to_raw_pointer!("field_bytes", &(unsafe { &*field_bytes })[..], None, None, ret_code, null_mut())
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_field_free(field: *mut FieldElement) { free_pointer(field) }
+ffi_export!(fn zendoo_field_free(field: *mut FieldElement) { free_pointer(field) });
 
-#[no_mangle]
-pub extern "C" fn zendoo_print_field(field: *const FieldElement) {
+ffi_export!(
+fn zendoo_print_field(field: *const FieldElement) {
     let ret_code = &mut CctpErrorCode::OK;
     let rs_field = try_read_raw_pointer!("field", field, ret_code, ());
     eprintln!("{:?}", match get_hex(rs_field, None) {
         Ok(v) => v,
         Err(e) => e.to_string(),
     });
-}
+});
 
 ////********************Sidechain SNARK functions********************
 
@@ -490,8 +493,8 @@ fn _zendoo_init_dlog_keys(
     }
 }
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_proving_system_type(
+ffi_export!(
+fn zendoo_get_proving_system_type(
     byte: u8,
     ret_code: &mut CctpErrorCode
 ) -> ProvingSystem
@@ -504,20 +507,20 @@ pub extern "C" fn zendoo_get_proving_system_type(
             ProvingSystem::Undefined
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_init_dlog_keys(
+ffi_export!(
+fn zendoo_init_dlog_keys(
     segment_size: usize,
     ret_code: &mut CctpErrorCode
 ) -> bool
 {
     // Get DLOG keys
     _zendoo_init_dlog_keys(segment_size, segment_size, ret_code)
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_init_dlog_keys_test_mode(
+ffi_export!(
+fn zendoo_init_dlog_keys_test_mode(
     max_segment_size: usize,
     supported_segment_size: usize,
     ret_code: &mut CctpErrorCode
@@ -525,10 +528,10 @@ pub extern "C" fn zendoo_init_dlog_keys_test_mode(
 {
     // Get DLOG keys
     _zendoo_init_dlog_keys(max_segment_size, supported_segment_size, ret_code)
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_serialize_sc_proof(
+ffi_export!(
+fn zendoo_serialize_sc_proof(
     sc_proof: *const ZendooProof,
     ret_code: &mut CctpErrorCode,
     compressed: bool,
@@ -550,10 +553,10 @@ pub extern "C" fn zendoo_serialize_sc_proof(
             null_mut()
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_deserialize_sc_proof(
+ffi_export!(
+fn zendoo_deserialize_sc_proof(
     sc_proof_bytes:  *const BufferWithSize,
     semantic_checks: bool,
     ret_code:        &mut CctpErrorCode,
@@ -562,20 +565,20 @@ pub extern "C" fn zendoo_deserialize_sc_proof(
 {
     let sc_proof_bytes = try_get_buffer_variable_size!("sc_proof_buffer", sc_proof_bytes, ret_code, null_mut());
     try_deserialize_to_raw_pointer!("sc_proof_bytes", sc_proof_bytes, Some(semantic_checks), Some(compressed), ret_code, null_mut())
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_proof_proving_system_type(
+ffi_export!(
+fn zendoo_get_sc_proof_proving_system_type(
     sc_proof: *const ZendooProof,
     ret_code: &mut CctpErrorCode
 ) -> ProvingSystem
 {
     let sc_proof = try_read_raw_pointer!("sc_proof", sc_proof, ret_code, ProvingSystem::Undefined);
     sc_proof.get_proving_system_type()
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_proof_proving_system_type_from_buffer(
+ffi_export!(
+fn zendoo_get_sc_proof_proving_system_type_from_buffer(
     sc_proof_bytes:  *const BufferWithSize,
     ret_code:        &mut CctpErrorCode,
 ) -> ProvingSystem
@@ -589,11 +592,11 @@ pub extern "C" fn zendoo_get_sc_proof_proving_system_type_from_buffer(
             ProvingSystem::Undefined
         }
     }
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", not(target_os = "windows")))]
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_proof_proving_system_type_from_file(
+fn zendoo_get_sc_proof_proving_system_type_from_file(
     proof_path:         *const u8,
     proof_path_len:     usize,
     ret_code:           &mut CctpErrorCode,
@@ -617,11 +620,11 @@ pub extern "C" fn zendoo_get_sc_proof_proving_system_type_from_file(
             ProvingSystem::Undefined
         }
     }
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", target_os = "windows"))]
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_proof_proving_system_type_from_file(
+fn zendoo_get_sc_proof_proving_system_type_from_file(
     proof_path:         *const u16,
     proof_path_len:     usize,
     ret_code:           &mut CctpErrorCode,
@@ -649,16 +652,16 @@ pub extern "C" fn zendoo_get_sc_proof_proving_system_type_from_file(
             ProvingSystem::Undefined
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_sc_proof_free(proof: *mut ZendooProof) {
+ffi_export!(
+fn zendoo_sc_proof_free(proof: *mut ZendooProof) {
     free_pointer(proof)
-}
+});
 
+ffi_export!(
 #[cfg(not(target_os = "windows"))]
-#[no_mangle]
-pub extern "C" fn zendoo_deserialize_sc_vk_from_file(
+fn zendoo_deserialize_sc_vk_from_file(
     vk_path: *const u8,
     vk_path_len: usize,
     semantic_checks: bool,
@@ -671,11 +674,11 @@ pub extern "C" fn zendoo_deserialize_sc_vk_from_file(
 
     // Deserialize vk
     try_deserialize_to_raw_pointer_from_file!("vk", vk_path, Some(semantic_checks), Some(compressed), ret_code, null_mut())
-}
+});
 
+ffi_export!(
 #[cfg(target_os = "windows")]
-#[no_mangle]
-pub extern "C" fn zendoo_deserialize_sc_vk_from_file(
+fn zendoo_deserialize_sc_vk_from_file(
     vk_path: *const u16,
     vk_path_len: usize,
     semantic_checks: bool,
@@ -691,10 +694,10 @@ pub extern "C" fn zendoo_deserialize_sc_vk_from_file(
 
     // Deserialize vk
     try_deserialize_to_raw_pointer_from_file!("vk", vk_path, Some(semantic_checks), Some(compressed), ret_code, null_mut())
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_deserialize_sc_vk(
+ffi_export!(
+fn zendoo_deserialize_sc_vk(
     sc_vk_bytes:     *const BufferWithSize,
     semantic_checks: bool,
     ret_code:        &mut CctpErrorCode,
@@ -702,20 +705,20 @@ pub extern "C" fn zendoo_deserialize_sc_vk(
 ) -> *mut ZendooVerifierKey {
     let sc_vk_bytes = try_get_buffer_variable_size!("sc_vk_buffer", sc_vk_bytes, ret_code, null_mut());
     try_deserialize_to_raw_pointer!("sc_vk_bytes", sc_vk_bytes, Some(semantic_checks), Some(compressed), ret_code, null_mut())
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_vk_proving_system_type(
+ffi_export!(
+fn zendoo_get_sc_vk_proving_system_type(
     sc_vk: *const ZendooVerifierKey,
     ret_code: &mut CctpErrorCode
 ) -> ProvingSystem
 {
     let sc_vk = try_read_raw_pointer!("sc_vk", sc_vk, ret_code, ProvingSystem::Undefined);
     sc_vk.get_proving_system_type()
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_vk_proving_system_type_from_buffer(
+ffi_export!(
+fn zendoo_get_sc_vk_proving_system_type_from_buffer(
     sc_vk_bytes:  *const BufferWithSize,
     ret_code:        &mut CctpErrorCode,
 ) -> ProvingSystem
@@ -729,11 +732,11 @@ pub extern "C" fn zendoo_get_sc_vk_proving_system_type_from_buffer(
             ProvingSystem::Undefined
         }
     }
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", not(target_os = "windows")))]
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_vk_proving_system_type_from_file(
+fn zendoo_get_sc_vk_proving_system_type_from_file(
     vk_path:         *const u8,
     vk_path_len:     usize,
     ret_code:           &mut CctpErrorCode,
@@ -757,11 +760,11 @@ pub extern "C" fn zendoo_get_sc_vk_proving_system_type_from_file(
             ProvingSystem::Undefined
         }
     }
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", target_os = "windows"))]
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_vk_proving_system_type_from_file(
+fn zendoo_get_sc_vk_proving_system_type_from_file(
     vk_path:         *const u16,
     vk_path_len:     usize,
     ret_code:           &mut CctpErrorCode,
@@ -789,12 +792,12 @@ pub extern "C" fn zendoo_get_sc_vk_proving_system_type_from_file(
             ProvingSystem::Undefined
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_sc_vk_free(sc_vk: *mut ZendooVerifierKey) {
+ffi_export!(
+fn zendoo_sc_vk_free(sc_vk: *mut ZendooVerifierKey) {
     free_pointer(sc_vk)
-}
+});
 
 fn get_cert_proof_usr_ins<'a>(
     constant:               *const FieldElement,
@@ -838,8 +841,8 @@ fn get_cert_proof_usr_ins<'a>(
     })
 }
 
-#[no_mangle]
-pub extern "C" fn zendoo_verify_certificate_proof(
+ffi_export!(
+fn zendoo_verify_certificate_proof(
     constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
     epoch_number:           u32,
@@ -879,7 +882,7 @@ pub extern "C" fn zendoo_verify_certificate_proof(
             false
         }
     }
-}
+});
 
 use cctp_primitives::proving_system::verifier::ceased_sidechain_withdrawal::PHANTOM_CERT_DATA_HASH;
 use cctp_primitives::utils::serialization::read_from_file;
@@ -914,13 +917,13 @@ fn get_csw_proof_usr_ins<'a>(
     })
 }
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_phantom_cert_data_hash() -> *mut FieldElement {
+ffi_export!(
+fn zendoo_get_phantom_cert_data_hash() -> *mut FieldElement {
     Box::into_raw(Box::new(PHANTOM_CERT_DATA_HASH))
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_cert_data_hash(
+ffi_export!(
+fn zendoo_get_cert_data_hash(
     sc_id:                  *const FieldElement,
     epoch_number:           u32,
     quality:                u64,
@@ -963,10 +966,10 @@ pub extern "C" fn zendoo_get_cert_data_hash(
             null_mut()
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_verify_csw_proof(
+ffi_export!(
+fn zendoo_verify_csw_proof(
     amount:                 u64,
     sc_id:                  *const FieldElement,
     nullifier:              *const FieldElement,
@@ -1001,7 +1004,7 @@ pub extern "C" fn zendoo_verify_csw_proof(
             false
         }
     }
-}
+});
 
 //********************Batch verifier functions*******************
 
@@ -1018,22 +1021,22 @@ impl Default for ZendooBatchProofVerifierResult {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn zendoo_free_batch_proof_verifier_result(raw_result: *mut ZendooBatchProofVerifierResult) {
+ffi_export!(
+fn zendoo_free_batch_proof_verifier_result(raw_result: *mut ZendooBatchProofVerifierResult) {
     if raw_result.is_null() { return };
     unsafe {
         let result = Box::from_raw(raw_result);
         Vec::from_raw_parts((*result).failing_proofs, (*result).num_failing_proofs, (*result).num_failing_proofs);
     };
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_create_batch_proof_verifier() -> *mut ZendooBatchVerifier {
+ffi_export!(
+fn zendoo_create_batch_proof_verifier() -> *mut ZendooBatchVerifier {
     Box::into_raw(Box::new(ZendooBatchVerifier::create()))
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_add_certificate_proof_to_batch_verifier(
+ffi_export!(
+fn zendoo_add_certificate_proof_to_batch_verifier(
     batch_verifier:         *mut ZendooBatchVerifier,
     proof_id:               u32,
     constant:               *const FieldElement,
@@ -1077,10 +1080,10 @@ pub extern "C" fn zendoo_add_certificate_proof_to_batch_verifier(
             false
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_add_csw_proof_to_batch_verifier(
+ffi_export!(
+fn zendoo_add_csw_proof_to_batch_verifier(
     batch_verifier:         *mut ZendooBatchVerifier,
     proof_id:               u32,
     amount:                 u64,
@@ -1119,10 +1122,10 @@ pub extern "C" fn zendoo_add_csw_proof_to_batch_verifier(
             false
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_pause_low_priority_threads() {
+ffi_export!(
+fn zendoo_pause_low_priority_threads() {
     let stop_ref = STOP_CTR.clone();
     let (lock, cvar) = &*stop_ref;
     let mut stop = match lock.lock() {
@@ -1131,10 +1134,10 @@ pub extern "C" fn zendoo_pause_low_priority_threads() {
     };
     *stop += 1;
     cvar.notify_all();
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_unpause_low_priority_threads() {
+ffi_export!(
+fn zendoo_unpause_low_priority_threads() {
     let stop_ref = STOP_CTR.clone();
     let (lock, cvar) = &*stop_ref;
     let mut stop = match lock.lock() {
@@ -1143,7 +1146,7 @@ pub extern "C" fn zendoo_unpause_low_priority_threads() {
     };
     *stop -= 1;
     cvar.notify_all();
-}
+});
 
 /// Build thread pool in which executing batch verification according to prioritization
 fn get_batch_verifier_thread_pool(prioritize: bool) -> rayon::ThreadPool {
@@ -1174,8 +1177,8 @@ fn get_batch_verifier_thread_pool(prioritize: bool) -> rayon::ThreadPool {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn zendoo_batch_verify_all_proofs(
+ffi_export!(
+fn zendoo_batch_verify_all_proofs(
     batch_verifier: *const ZendooBatchVerifier,
     prioritize: bool,
     ret_code: &mut CctpErrorCode
@@ -1232,10 +1235,10 @@ pub extern "C" fn zendoo_batch_verify_all_proofs(
         }
     }
     Box::into_raw(Box::new(ret))
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_batch_verify_proofs_by_id(
+ffi_export!(
+fn zendoo_batch_verify_proofs_by_id(
     batch_verifier: *const ZendooBatchVerifier,
     ids_list: *const u32,
     ids_list_len: usize,
@@ -1292,17 +1295,17 @@ pub extern "C" fn zendoo_batch_verify_proofs_by_id(
         }
     }
     Box::into_raw(Box::new(ret))
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_free_batch_proof_verifier(batch_verifier: *mut ZendooBatchVerifier) {
+ffi_export!(
+fn zendoo_free_batch_proof_verifier(batch_verifier: *mut ZendooBatchVerifier) {
     free_pointer(batch_verifier)
-}
+});
 
 //********************Poseidon hash functions********************
 
-#[no_mangle]
-pub extern "C" fn zendoo_init_poseidon_hash_constant_length(
+ffi_export!(
+fn zendoo_init_poseidon_hash_constant_length(
     input_size: usize,
     personalization: *const *const FieldElement,
     personalization_len: usize,
@@ -1311,10 +1314,10 @@ pub extern "C" fn zendoo_init_poseidon_hash_constant_length(
 
     let personalization = try_read_optional_double_raw_pointer!("personalization", personalization, personalization_len, ret_code, null_mut());
     Box::into_raw(Box::new(get_poseidon_hash_constant_length(input_size, personalization)))
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_init_poseidon_hash_variable_length(
+ffi_export!(
+fn zendoo_init_poseidon_hash_variable_length(
     mod_rate: bool,
     personalization: *const *const FieldElement,
     personalization_len: usize,
@@ -1323,10 +1326,10 @@ pub extern "C" fn zendoo_init_poseidon_hash_variable_length(
 {
     let personalization = try_read_optional_double_raw_pointer!("personalization", personalization, personalization_len, ret_code, null_mut());
     Box::into_raw(Box::new(get_poseidon_hash_variable_length(mod_rate, personalization)))
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_update_poseidon_hash(
+ffi_export!(
+fn zendoo_update_poseidon_hash(
     fe: *const FieldElement,
     digest: *mut FieldHash,
     ret_code: &mut CctpErrorCode,
@@ -1337,10 +1340,10 @@ pub extern "C" fn zendoo_update_poseidon_hash(
 
     update_poseidon_hash(digest, input);
     true
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_update_poseidon_hash_from_raw(
+ffi_export!(
+fn zendoo_update_poseidon_hash_from_raw(
     fe: *const BufferWithSize,
     digest: *mut FieldHash,
     ret_code: &mut CctpErrorCode,
@@ -1364,10 +1367,10 @@ pub extern "C" fn zendoo_update_poseidon_hash_from_raw(
             false
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_finalize_poseidon_hash(
+ffi_export!(
+fn zendoo_finalize_poseidon_hash(
     digest: *const FieldHash,
     ret_code: &mut CctpErrorCode,
 ) -> *mut FieldElement
@@ -1382,10 +1385,10 @@ pub extern "C" fn zendoo_finalize_poseidon_hash(
             null_mut()
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_reset_poseidon_hash(
+ffi_export!(
+fn zendoo_reset_poseidon_hash(
     digest: *mut FieldHash,
     personalization: *const *const FieldElement,
     personalization_len: usize,
@@ -1396,17 +1399,17 @@ pub extern "C" fn zendoo_reset_poseidon_hash(
     let personalization = try_read_optional_double_raw_pointer!("personalization", personalization, personalization_len, ret_code, false);
     reset_poseidon_hash(digest, personalization);
     true
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_free_poseidon_hash(
+ffi_export!(
+fn zendoo_free_poseidon_hash(
     digest: *mut FieldHash
-) { free_pointer(digest) }
+) { free_pointer(digest) });
 
 
 // ********************Merkle Tree functions********************
-#[no_mangle]
-pub extern "C" fn zendoo_new_ginger_mht(
+ffi_export!(
+fn zendoo_new_ginger_mht(
     height: usize,
     processing_step: usize,
     ret_code: &mut CctpErrorCode,
@@ -1421,10 +1424,10 @@ pub extern "C" fn zendoo_new_ginger_mht(
         }
     }
 
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_append_leaf_to_ginger_mht(
+ffi_export!(
+fn zendoo_append_leaf_to_ginger_mht(
     leaf: *const FieldElement,
     tree: *mut GingerMHT,
     ret_code: &mut CctpErrorCode,
@@ -1441,10 +1444,10 @@ pub extern "C" fn zendoo_append_leaf_to_ginger_mht(
             false
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_append_leaf_to_ginger_mht_from_raw(
+ffi_export!(
+fn zendoo_append_leaf_to_ginger_mht_from_raw(
     leaf: *const BufferWithSize,
     tree: *mut GingerMHT,
     ret_code: &mut CctpErrorCode,
@@ -1479,10 +1482,10 @@ pub extern "C" fn zendoo_append_leaf_to_ginger_mht_from_raw(
             false
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_finalize_ginger_mht(
+ffi_export!(
+fn zendoo_finalize_ginger_mht(
     tree: *const GingerMHT,
     ret_code: &mut CctpErrorCode,
 ) -> *mut GingerMHT
@@ -1501,10 +1504,10 @@ pub extern "C" fn zendoo_finalize_ginger_mht(
             null_mut()
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_finalize_ginger_mht_in_place(
+ffi_export!(
+fn zendoo_finalize_ginger_mht_in_place(
     tree: *mut GingerMHT,
     ret_code: &mut CctpErrorCode,
 ) -> bool
@@ -1516,10 +1519,10 @@ pub extern "C" fn zendoo_finalize_ginger_mht_in_place(
         Ok(_) => true,
         Err(_) => false
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_ginger_mht_root(
+ffi_export!(
+fn zendoo_get_ginger_mht_root(
     tree: *const GingerMHT,
     ret_code: &mut CctpErrorCode,
 ) -> *mut FieldElement
@@ -1536,10 +1539,10 @@ pub extern "C" fn zendoo_get_ginger_mht_root(
             null_mut()
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_ginger_merkle_path(
+ffi_export!(
+fn zendoo_get_ginger_merkle_path(
     tree: *const GingerMHT,
     leaf_index: usize,
     ret_code: &mut CctpErrorCode,
@@ -1557,10 +1560,10 @@ pub extern "C" fn zendoo_get_ginger_merkle_path(
             null_mut()
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_ginger_empty_node(
+ffi_export!(
+fn zendoo_get_ginger_empty_node(
     height: usize
 ) -> *mut FieldElement
 {
@@ -1570,10 +1573,10 @@ pub extern "C" fn zendoo_get_ginger_empty_node(
     let empty_node = GINGER_MHT_POSEIDON_PARAMETERS.nodes[max_height - height].clone();
 
     Box::into_raw(Box::new(empty_node))
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_verify_ginger_merkle_path(
+ffi_export!(
+fn zendoo_verify_ginger_merkle_path(
     path: *const GingerMHTPath,
     height: usize,
     leaf: *const FieldElement,
@@ -1599,15 +1602,15 @@ pub extern "C" fn zendoo_verify_ginger_merkle_path(
             false
         }
     }
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_free_ginger_merkle_path(
+ffi_export!(
+fn zendoo_free_ginger_merkle_path(
     path: *mut GingerMHTPath
-) { free_pointer(path) }
+) { free_pointer(path) });
 
-#[no_mangle]
-pub extern "C" fn zendoo_reset_ginger_mht(
+ffi_export!(
+fn zendoo_reset_ginger_mht(
     tree: *mut GingerMHT,
     ret_code: &mut CctpErrorCode,
 ) -> bool
@@ -1617,12 +1620,12 @@ pub extern "C" fn zendoo_reset_ginger_mht(
 
     reset_ginger_mht(tree);
     true
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_free_ginger_mht(
+ffi_export!(
+fn zendoo_free_ginger_mht(
     tree: *mut GingerMHT
-) { free_pointer(tree) }
+) { free_pointer(tree) });
 
 //***************Test functions*******************
 
@@ -1632,9 +1635,9 @@ pub enum TestCircuitType {
     CSW
 }
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", not(target_os = "windows")))]
-#[no_mangle]
-pub extern "C" fn zendoo_deserialize_sc_proof_from_file(
+fn zendoo_deserialize_sc_proof_from_file(
     proof_path:         *const u8,
     proof_path_len:     usize,
     semantic_checks:    bool,
@@ -1645,11 +1648,11 @@ pub extern "C" fn zendoo_deserialize_sc_proof_from_file(
     // Read file path
     let proof_path = parse_path(proof_path, proof_path_len);
     try_deserialize_to_raw_pointer_from_file!("sc_proof", proof_path, Some(semantic_checks), Some(compressed), ret_code, null_mut())
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", target_os = "windows"))]
-#[no_mangle]
-pub extern "C" fn zendoo_deserialize_sc_proof_from_file(
+fn zendoo_deserialize_sc_proof_from_file(
     proof_path:         *const u16,
     proof_path_len:     usize,
     semantic_checks:    bool,
@@ -1664,11 +1667,11 @@ pub extern "C" fn zendoo_deserialize_sc_proof_from_file(
     let proof_path = Path::new(&path_str);
 
     try_deserialize_to_raw_pointer_from_file!("sc_proof", proof_path, Some(semantic_checks), Some(compressed), ret_code, null_mut())
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", not(target_os = "windows")))]
-#[no_mangle]
-pub extern "C" fn zendoo_deserialize_sc_pk_from_file(
+fn zendoo_deserialize_sc_pk_from_file(
     pk_path:            *const u8,
     pk_path_len:        usize,
     semantic_checks:    bool,
@@ -1679,11 +1682,11 @@ pub extern "C" fn zendoo_deserialize_sc_pk_from_file(
     // Read file path
     let pk_path = parse_path(pk_path, pk_path_len);
     try_deserialize_to_raw_pointer_from_file!("sc_pk", pk_path, Some(semantic_checks), Some(compressed), ret_code, null_mut())
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", target_os = "windows"))]
-#[no_mangle]
-pub extern "C" fn zendoo_deserialize_sc_pk_from_file(
+fn zendoo_deserialize_sc_pk_from_file(
     pk_path:            *const u16,
     pk_path_len:        usize,
     semantic_checks:    bool,
@@ -1698,21 +1701,21 @@ pub extern "C" fn zendoo_deserialize_sc_pk_from_file(
     let pk_path = Path::new(&path_str);
 
     try_deserialize_to_raw_pointer_from_file!("sc_pk", pk_path, Some(semantic_checks), Some(compressed), ret_code, null_mut())
-}
+});
 
+ffi_export!(
 #[cfg(feature = "mc-test-circuit")]
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_pk_proving_system_type(
+fn zendoo_get_sc_pk_proving_system_type(
     sc_pk:    *const ZendooProverKey,
     ret_code: &mut CctpErrorCode
 ) -> ProvingSystem
 {
     let sc_pk = try_read_raw_pointer!("sc_pk", sc_pk, ret_code, ProvingSystem::Undefined);
     sc_pk.get_proving_system_type()
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_pk_proving_system_type_from_buffer(
+ffi_export!(
+fn zendoo_get_sc_pk_proving_system_type_from_buffer(
     sc_pk_bytes:  *const BufferWithSize,
     ret_code:        &mut CctpErrorCode,
 ) -> ProvingSystem
@@ -1726,11 +1729,11 @@ pub extern "C" fn zendoo_get_sc_pk_proving_system_type_from_buffer(
             ProvingSystem::Undefined
         }
     }
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", not(target_os = "windows")))]
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_pk_proving_system_type_from_file(
+fn zendoo_get_sc_pk_proving_system_type_from_file(
     pk_path:         *const u8,
     pk_path_len:     usize,
     ret_code:           &mut CctpErrorCode,
@@ -1754,11 +1757,11 @@ pub extern "C" fn zendoo_get_sc_pk_proving_system_type_from_file(
                 ProvingSystem::Undefined
             }
         }
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", target_os = "windows"))]
-#[no_mangle]
-pub extern "C" fn zendoo_get_sc_pk_proving_system_type_from_file(
+fn zendoo_get_sc_pk_proving_system_type_from_file(
     pk_path:         *const u16,
     pk_path_len:     usize,
     ret_code:           &mut CctpErrorCode,
@@ -1786,16 +1789,16 @@ pub extern "C" fn zendoo_get_sc_pk_proving_system_type_from_file(
             ProvingSystem::Undefined
         }
     }
-}
+});
 
+ffi_export!(
 #[cfg(feature = "mc-test-circuit")]
-#[no_mangle]
-pub extern "C" fn zendoo_sc_pk_free(
+fn zendoo_sc_pk_free(
     sc_pk:    *mut ZendooProverKey,
 )
 {
     free_pointer(sc_pk)
-}
+});
 
 #[cfg(feature = "mc-test-circuit")]
 fn _zendoo_generate_mc_test_params(
@@ -1873,9 +1876,9 @@ fn _zendoo_generate_mc_test_params(
     }
 }
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", target_os = "windows"))]
-#[no_mangle]
-pub extern "C" fn zendoo_generate_mc_test_params(
+fn zendoo_generate_mc_test_params(
     circ_type:          TestCircuitType,
     ps_type:            ProvingSystem,
     num_constraints:    u32,
@@ -1893,11 +1896,11 @@ pub extern "C" fn zendoo_generate_mc_test_params(
     let params_dir = Path::new(&path_str);
 
     _zendoo_generate_mc_test_params(circ_type, ps_type, num_constraints, params_dir, ret_code, compress_vk, compress_pk)
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", not(target_os = "windows")))]
-#[no_mangle]
-pub extern "C" fn zendoo_generate_mc_test_params(
+fn zendoo_generate_mc_test_params(
     circ_type:          TestCircuitType,
     ps_type:            ProvingSystem,
     num_constraints:    u32,
@@ -1910,7 +1913,7 @@ pub extern "C" fn zendoo_generate_mc_test_params(
 {
     let params_dir = parse_path(params_dir, params_dir_len);
     _zendoo_generate_mc_test_params(circ_type, ps_type, num_constraints, params_dir, ret_code, compress_vk, compress_pk)
-}
+});
 
 #[cfg(feature = "mc-test-circuit")]
 fn _zendoo_create_cert_test_proof(
@@ -1962,9 +1965,9 @@ fn _zendoo_create_cert_test_proof(
     )
 }
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", not(target_os = "windows")))]
-#[no_mangle]
-pub extern "C" fn zendoo_create_cert_test_proof(
+fn zendoo_create_cert_test_proof(
     zk:                     bool,
     constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
@@ -2008,11 +2011,11 @@ pub extern "C" fn zendoo_create_cert_test_proof(
             false
         }
     }
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", target_os = "windows"))]
-#[no_mangle]
-pub extern "C" fn zendoo_create_cert_test_proof(
+fn zendoo_create_cert_test_proof(
     zk:                     bool,
     constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
@@ -2059,7 +2062,7 @@ pub extern "C" fn zendoo_create_cert_test_proof(
             false
         }
     }
-}
+});
 
 #[cfg(feature = "mc-test-circuit")]
 fn _zendoo_create_csw_test_proof(
@@ -2097,9 +2100,9 @@ fn _zendoo_create_csw_test_proof(
     )
 }
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", not(target_os = "windows")))]
-#[no_mangle]
-pub extern "C" fn zendoo_create_csw_test_proof(
+fn zendoo_create_csw_test_proof(
     zk:                     bool,
     amount:                 u64,
     sc_id:                  *const FieldElement,
@@ -2138,11 +2141,11 @@ pub extern "C" fn zendoo_create_csw_test_proof(
             false
         }
     }
-}
+});
 
+ffi_export!(
 #[cfg(all(feature = "mc-test-circuit", target_os = "windows"))]
-#[no_mangle]
-pub extern "C" fn zendoo_create_csw_test_proof(
+fn zendoo_create_csw_test_proof(
     zk:                     bool,
     amount:                 u64,
     sc_id:                  *const FieldElement,
@@ -2184,11 +2187,11 @@ pub extern "C" fn zendoo_create_csw_test_proof(
             false
         }
     }
-}
+});
 
+ffi_export!(
 #[cfg(feature = "mc-test-circuit")]
-#[no_mangle]
-pub extern "C" fn zendoo_create_return_cert_test_proof(
+fn zendoo_create_return_cert_test_proof(
     zk:                     bool,
     constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
@@ -2234,12 +2237,11 @@ pub extern "C" fn zendoo_create_return_cert_test_proof(
             null_mut()
         }
     }
-}
+});
 
-
+ffi_export!(
 #[cfg(feature = "mc-test-circuit")]
-#[no_mangle]
-pub extern "C" fn zendoo_create_return_csw_test_proof(
+fn zendoo_create_return_csw_test_proof(
     zk:                     bool,
     amount:                 u64,
     sc_id:                  *const FieldElement,
@@ -2280,7 +2282,7 @@ pub extern "C" fn zendoo_create_return_csw_test_proof(
             null_mut()
         }
     }
-}
+});
 
 fn check_equal<T: PartialEq>(val_1: *const T, val_2: *const T) -> bool {
     let val_1 = unsafe { &*val_1 };
@@ -2288,29 +2290,29 @@ fn check_equal<T: PartialEq>(val_1: *const T, val_2: *const T) -> bool {
     val_1 == val_2
 }
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_random_field() -> *mut FieldElement {
+ffi_export!(
+fn zendoo_get_random_field() -> *mut FieldElement {
     let mut rng = OsRng;
     let random_f = FieldElement::rand(&mut rng);
     Box::into_raw(Box::new(random_f))
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_get_field_from_long(value: u64) -> *mut FieldElement {
+ffi_export!(
+fn zendoo_get_field_from_long(value: u64) -> *mut FieldElement {
     let fe = FieldElement::from(value);
     Box::into_raw(Box::new(fe))
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_field_assert_eq(
+ffi_export!(
+fn zendoo_field_assert_eq(
     field_1: *const FieldElement,
     field_2: *const FieldElement,
 ) -> bool {
     check_equal(field_1, field_2)
-}
+});
 
-#[no_mangle]
-pub extern "C" fn zendoo_sc_proof_assert_eq(
+ffi_export!(
+fn zendoo_sc_proof_assert_eq(
     sc_proof_1: *const ZendooProof,
     sc_proof_2: *const ZendooProof,
 ) -> bool {
@@ -2321,4 +2323,4 @@ pub extern "C" fn zendoo_sc_proof_assert_eq(
         (ZendooProof::Darlin(darlin_proof_1), ZendooProof::Darlin(darlin_proof_2)) => darlin_proof_1 == darlin_proof_2,
         _ => false
     }
-}
+});
