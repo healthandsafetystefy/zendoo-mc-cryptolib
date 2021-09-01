@@ -888,6 +888,7 @@ use cctp_primitives::utils::serialization::read_from_file;
 
 fn get_csw_proof_usr_ins<'a>(
     amount:                 u64,
+    constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
     nullifier:              *const FieldElement,
     mc_pk_hash:             *const BufferWithSize,
@@ -896,6 +897,8 @@ fn get_csw_proof_usr_ins<'a>(
     ret_code:               &mut CctpErrorCode
 ) -> Option<CSWProofUserInputs<'a>>
 {
+    let rs_constant = try_read_optional_raw_pointer!("constant", constant, ret_code, None);
+
     // Read constant size data
     let rs_sc_id = try_read_raw_pointer!("sc_id", sc_id, ret_code, None);
     let rs_nullifier = try_read_raw_pointer!("nullifier", nullifier, ret_code, None);
@@ -908,6 +911,7 @@ fn get_csw_proof_usr_ins<'a>(
     // Create and return usr ins
     Some(CSWProofUserInputs{
         amount,
+        constant: rs_constant,
         sc_id: rs_sc_id,
         nullifier: rs_nullifier,
         pub_key_hash: rs_mc_pk_hash,
@@ -970,6 +974,7 @@ pub extern "C" fn zendoo_get_cert_data_hash(
 #[no_mangle]
 pub extern "C" fn zendoo_verify_csw_proof(
     amount:                 u64,
+    constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
     nullifier:              *const FieldElement,
     mc_pk_hash:             *const BufferWithSize,
@@ -982,7 +987,7 @@ pub extern "C" fn zendoo_verify_csw_proof(
 {
     // Get usr_ins
     let usr_ins = get_csw_proof_usr_ins(
-        amount, sc_id, nullifier, mc_pk_hash, cert_data_hash,
+        amount, constant, sc_id, nullifier, mc_pk_hash, cert_data_hash,
         end_cum_comm_tree_root, ret_code
     );
     if usr_ins.is_none() { return false; }
@@ -1086,6 +1091,7 @@ pub extern "C" fn zendoo_add_csw_proof_to_batch_verifier(
     batch_verifier:         *mut ZendooBatchVerifier,
     proof_id:               u32,
     amount:                 u64,
+    constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
     nullifier:              *const FieldElement,
     mc_pk_hash:             *const BufferWithSize,
@@ -1098,7 +1104,7 @@ pub extern "C" fn zendoo_add_csw_proof_to_batch_verifier(
 {
     // Get usr_ins
     let usr_ins = get_csw_proof_usr_ins(
-        amount, sc_id, nullifier, mc_pk_hash, cert_data_hash,
+        amount, constant, sc_id, nullifier, mc_pk_hash, cert_data_hash,
         end_cum_comm_tree_root, ret_code
     );
     if usr_ins.is_none() { return false; }
@@ -1632,7 +1638,8 @@ pub extern "C" fn zendoo_free_ginger_mht(
 pub enum TestCircuitType {
     Certificate,
     CertificateNoConstant,
-    CSW
+    CSW,
+    CSWNoConstant,
 }
 
 #[cfg(all(feature = "mc-test-circuit", not(target_os = "windows")))]
@@ -1835,7 +1842,11 @@ fn _zendoo_generate_mc_test_params(
         },
         TestCircuitType::CSW => {
             params_path.push_str("csw_");
-            mc_test_circuits::csw::generate_parameters(ps_type, num_constraints)
+            mc_test_circuits::csw::generate_parameters(ps_type, num_constraints, true)
+        },
+        TestCircuitType::CSWNoConstant => {
+            params_path.push_str("csw_no_const_");
+            mc_test_circuits::csw::generate_parameters(ps_type, num_constraints, false)
         }
     };
 
@@ -2072,6 +2083,7 @@ pub extern "C" fn zendoo_create_cert_test_proof(
 fn _zendoo_create_csw_test_proof(
     zk:                     bool,
     amount:                 u64,
+    constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
     nullifier:              *const FieldElement,
     mc_pk_hash:             *const BufferWithSize,
@@ -2082,6 +2094,7 @@ fn _zendoo_create_csw_test_proof(
     ret_code:               &mut CctpErrorCode
 ) -> Result<ZendooProof, ProvingSystemError>
 {
+    let rs_constant               = try_read_optional_raw_pointer!("constant", constant, ret_code, Err(ProvingSystemError::Other("".to_owned())));
     let rs_sc_id                  = try_read_raw_pointer!("sc_id",                  sc_id,                  ret_code, Err(ProvingSystemError::Other("".to_owned())));
     let rs_nullifier              = try_read_raw_pointer!("nullifier",              nullifier,              ret_code, Err(ProvingSystemError::Other("".to_owned())));
     let rs_cert_data_hash         = try_read_optional_raw_pointer!("cert_data_hash",         cert_data_hash,         ret_code, Err(ProvingSystemError::Other("".to_owned())));
@@ -2095,6 +2108,7 @@ fn _zendoo_create_csw_test_proof(
         rs_pk,
         zk,
         amount,
+        rs_constant,
         rs_sc_id,
         rs_nullifier,
         rs_mc_pk_hash,
@@ -2109,6 +2123,7 @@ fn _zendoo_create_csw_test_proof(
 pub extern "C" fn zendoo_create_csw_test_proof(
     zk:                     bool,
     amount:                 u64,
+    constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
     nullifier:              *const FieldElement,
     mc_pk_hash:             *const BufferWithSize,
@@ -2123,7 +2138,7 @@ pub extern "C" fn zendoo_create_csw_test_proof(
 ) -> bool
 {
     match _zendoo_create_csw_test_proof(
-        zk, amount, sc_id, nullifier, mc_pk_hash, cert_data_hash,
+        zk, amount, constant, sc_id, nullifier, mc_pk_hash, cert_data_hash,
         end_cum_comm_tree_root, sc_pk, num_constraints, ret_code
     ){
         Ok(proof) => {
@@ -2152,6 +2167,7 @@ pub extern "C" fn zendoo_create_csw_test_proof(
 pub extern "C" fn zendoo_create_csw_test_proof(
     zk:                     bool,
     amount:                 u64,
+    constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
     nullifier:              *const FieldElement,
     mc_pk_hash:             *const BufferWithSize,
@@ -2166,7 +2182,7 @@ pub extern "C" fn zendoo_create_csw_test_proof(
 ) -> bool
 {
     match _zendoo_create_csw_test_proof(
-        zk, amount, sc_id, nullifier, mc_pk_hash, cert_data_hash,
+        zk, amount, constant, sc_id, nullifier, mc_pk_hash, cert_data_hash,
         end_cum_comm_tree_root, sc_pk, num_constraints, ret_code
     ){
         Ok(proof) => {
@@ -2249,6 +2265,7 @@ pub extern "C" fn zendoo_create_return_cert_test_proof(
 pub extern "C" fn zendoo_create_return_csw_test_proof(
     zk:                     bool,
     amount:                 u64,
+    constant:               *const FieldElement,
     sc_id:                  *const FieldElement,
     nullifier:              *const FieldElement,
     mc_pk_hash:             *const BufferWithSize,
@@ -2261,7 +2278,7 @@ pub extern "C" fn zendoo_create_return_csw_test_proof(
 ) -> *mut BufferWithSize
 {
     match _zendoo_create_csw_test_proof(
-        zk, amount, sc_id, nullifier, mc_pk_hash, cert_data_hash,
+        zk, amount, constant, sc_id, nullifier, mc_pk_hash, cert_data_hash,
         end_cum_comm_tree_root, sc_pk, num_constraints, ret_code
     ){
         Ok(sc_proof) => {

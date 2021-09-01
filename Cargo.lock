@@ -103,7 +103,7 @@ checksum = "e70cc2f62c6ce1868963827bd677764c62d07c3d9a3e1fb1177ee1a9ab199eb2"
 [[package]]
 name = "cctp_primitives"
 version = "0.1.0"
-source = "git+https://github.com/HorizenOfficial/zendoo-cctp-lib.git?branch=audit_fixes_005#8fd050faf14f0aff8893e1dcbb05f19ec9ed3880"
+source = "git+https://github.com/HorizenOfficial/zendoo-cctp-lib.git?branch=as/csw_proof_param_constant#b7774e75b669e421bbfbec51dde5e93ec94fc016"
 dependencies = [
  "algebra",
  "bench-utils",
