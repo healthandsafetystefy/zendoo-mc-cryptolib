@@ -9,7 +9,7 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 [[package]]
 name = "algebra"
 version = "0.1.0"
-source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes#40d90f11480f471693c0ee3d33255531d7c922bb"
+source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes_005#b0c31ba292f7f2dfd1b0f05c81c0d48061d73d76"
 dependencies = [
  "algebra-derive",
  "byteorder",
@@ -25,7 +25,7 @@ dependencies = [
 [[package]]
 name = "algebra-derive"
 version = "0.2.0"
-source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes#40d90f11480f471693c0ee3d33255531d7c922bb"
+source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes_005#b0c31ba292f7f2dfd1b0f05c81c0d48061d73d76"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -41,7 +41,7 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 [[package]]
 name = "bench-utils"
 version = "0.1.0"
-source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes#40d90f11480f471693c0ee3d33255531d7c922bb"
+source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes_005#b0c31ba292f7f2dfd1b0f05c81c0d48061d73d76"
 
 [[package]]
 name = "bit-vec"
@@ -103,7 +103,7 @@ checksum = "e70cc2f62c6ce1868963827bd677764c62d07c3d9a3e1fb1177ee1a9ab199eb2"
 [[package]]
 name = "cctp_primitives"
 version = "0.1.0"
-source = "git+https://github.com/HorizenOfficial/zendoo-cctp-lib.git?branch=ft_return_address#18ad896fc8c006e260d9abcbf7c6654e5f7e78cf"
+source = "git+https://github.com/HorizenOfficial/zendoo-cctp-lib.git?branch=audit_fixes_005#8fd050faf14f0aff8893e1dcbb05f19ec9ed3880"
 dependencies = [
  "algebra",
  "bench-utils",
@@ -226,7 +226,7 @@ checksum = "c34f04666d835ff5d62e058c3995147c06f42fe86ff053337632bca83e42702d"
 [[package]]
 name = "field-assembly"
 version = "0.1.1-alpha.0"
-source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes#40d90f11480f471693c0ee3d33255531d7c922bb"
+source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes_005#b0c31ba292f7f2dfd1b0f05c81c0d48061d73d76"
 dependencies = [
  "mince",
 ]
@@ -293,7 +293,7 @@ checksum = "12b8adadd720df158f4d70dfe7ccc6adb0472d7c55ca83445f6a5ab3e36f8fb6"
 [[package]]
 name = "marlin"
 version = "0.1.0"
-source = "git+https://github.com/HorizenLabs/marlin?branch=audit_fixes#722e234c10443fc69b48e780c5f2fc40b845c318"
+source = "git+https://github.com/HorizenLabs/marlin?branch=audit_fixes_005#eb0a4f7a08fb9989d6e65ed331610202fca4a637"
 dependencies = [
  "algebra",
  "bench-utils",
@@ -326,7 +326,7 @@ dependencies = [
 [[package]]
 name = "mince"
 version = "0.1.1-alpha.0"
-source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes#40d90f11480f471693c0ee3d33255531d7c922bb"
+source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes_005#b0c31ba292f7f2dfd1b0f05c81c0d48061d73d76"
 dependencies = [
  "quote",
  "syn",
@@ -376,7 +376,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "poly-commit"
 version = "0.1.0"
-source = "git+https://github.com/HorizenLabs/poly-commit?branch=audit_fixes#a8e1264da6500721e79e2dd1cde441245e44a08c"
+source = "git+https://github.com/HorizenLabs/poly-commit?branch=audit_fixes_005#e19e6715acb71b50d6685f08eac47fae83eaf66c"
 dependencies = [
  "algebra",
  "bench-utils",
@@ -397,7 +397,7 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 [[package]]
 name = "primitives"
 version = "0.1.0"
-source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes#40d90f11480f471693c0ee3d33255531d7c922bb"
+source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes_005#b0c31ba292f7f2dfd1b0f05c81c0d48061d73d76"
 dependencies = [
  "algebra",
  "bench-utils",
@@ -420,7 +420,7 @@ dependencies = [
 [[package]]
 name = "proof-systems"
 version = "0.1.0"
-source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes#40d90f11480f471693c0ee3d33255531d7c922bb"
+source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes_005#b0c31ba292f7f2dfd1b0f05c81c0d48061d73d76"
 dependencies = [
  "algebra",
  "bench-utils",
@@ -449,7 +449,7 @@ dependencies = [
 [[package]]
 name = "r1cs-core"
 version = "0.1.0"
-source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes#40d90f11480f471693c0ee3d33255531d7c922bb"
+source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes_005#b0c31ba292f7f2dfd1b0f05c81c0d48061d73d76"
 dependencies = [
  "algebra",
  "smallvec",
@@ -458,7 +458,7 @@ dependencies = [
 [[package]]
 name = "r1cs-crypto"
 version = "0.1.0"
-source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes#40d90f11480f471693c0ee3d33255531d7c922bb"
+source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes_005#b0c31ba292f7f2dfd1b0f05c81c0d48061d73d76"
 dependencies = [
  "algebra",
  "bench-utils",
@@ -473,7 +473,7 @@ dependencies = [
 [[package]]
 name = "r1cs-std"
 version = "0.1.0"
-source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes#40d90f11480f471693c0ee3d33255531d7c922bb"
+source = "git+https://github.com/HorizenOfficial/ginger-lib.git?branch=audit_fixes_005#b0c31ba292f7f2dfd1b0f05c81c0d48061d73d76"
 dependencies = [
  "algebra",
  "derivative",
