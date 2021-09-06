@@ -376,7 +376,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "poly-commit"
 version = "0.1.0"
-source = "git+https://github.com/HorizenLabs/poly-commit?branch=sc_testnet_2#949419b5e0d112cd0606b883acd9891217e7f2b1"
+source = "git+https://github.com/HorizenLabs/poly-commit?branch=sc_testnet_2#2df293d538c0571e81d097c855c3f7225fb40a0b"
 dependencies = [
  "algebra",
  "bench-utils",
