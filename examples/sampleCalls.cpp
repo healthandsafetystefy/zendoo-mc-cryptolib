@@ -11,6 +11,13 @@
 #include <vector>
 #include <time.h>
 
+TEST_CASE("Panic test") {
+    panicking_function();
+    CctpErrorCode ret_code = CctpErrorCode::OK;
+    panicking_function_with_ret_code(&ret_code);
+    CHECK(ret_code == CctpErrorCode::PanicOccured);
+}
+
 TEST_SUITE("Field Element") {
 
     TEST_CASE("Field Size") {

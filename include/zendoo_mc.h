@@ -37,6 +37,7 @@ extern "C" {
             UncompressError,
             MerkleRootBuildError,
             GenericError,
+            PanicOccured, //TODO: Maybe add a default construct that aborts the C process when a PanicOccured is returned ?
             TestProofCreationFailure,
     } CctpErrorCode;
 
@@ -1131,6 +1132,10 @@ extern "C" {
          const sc_proof_t* sc_proof_1,
          const sc_proof_t* sc_proof_2
      );
+
+     // For testing purposes
+     void panicking_function();
+     void panicking_function_with_ret_code(CctpErrorCode* ret_code);
 
 }
 

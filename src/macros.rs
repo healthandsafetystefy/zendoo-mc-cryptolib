@@ -46,6 +46,7 @@ pub enum CctpErrorCode {
     UncompressError,
     MerkleRootBuildError,
     GenericError,
+    PanicOccured,
     TestProofCreationFailure,
 }
 

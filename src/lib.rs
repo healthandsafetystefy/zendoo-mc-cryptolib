@@ -50,6 +50,7 @@ use macros::*;
 
 #[macro_use]
 pub mod unwind;
+use unwind::*;
 
 #[cfg(feature = "mc-test-circuit")]
 pub mod mc_test_circuits;
@@ -116,7 +117,7 @@ ffi_export_with_ret_code!(
 fn zendoo_compute_sc_id(
     ret_code:   &mut CctpErrorCode,
     tx_hash:    *const BufferWithSize,
-    pos:        u32,
+    pos:        u32
 ) -> *mut FieldElement
 {
     let rs_tx_hash = try_get_buffer_constant_size!("tx_hash", tx_hash, UINT_256_SIZE, ret_code, null_mut());
@@ -2324,3 +2325,6 @@ fn zendoo_sc_proof_assert_eq(
         _ => false
     }
 });
+
+ffi_export!( fn panicking_function() { panic!("Oh no ! A panic occured") });
+ffi_export_with_ret_code!( fn panicking_function_with_ret_code(ret_code: &mut CctpErrorCode,) { panic!("Oh no ! A panic occured") });

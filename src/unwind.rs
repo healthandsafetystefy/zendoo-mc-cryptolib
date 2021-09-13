@@ -1,3 +1,18 @@
+use std::{any::Any, error::Error};
+
+/// Tries to get meaningful description from panic-error.
+pub(crate) fn any_to_string(any: Box<dyn Any + Send>) -> String {
+    if let Some(s) = any.downcast_ref::<&str>() {
+        (*s).to_string()
+    } else if let Some(s) = any.downcast_ref::<String>() {
+        s.clone()
+    } else if let Some(error) = any.downcast_ref::<Box<dyn Error + Send>>() {
+        error.to_string()
+    } else {
+        "Unknown error occurred".to_string()
+    }
+}
+
 macro_rules! ffi_export {
 
     // For functions returning an opaque pointer (*mut T doesn't implement Default)
@@ -13,7 +28,7 @@ macro_rules! ffi_export {
             match ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || $body)) {
                 Ok(x) => return x,
                 Err(e) => {
-                    eprintln!("Panic occured: {:?}", e);
+                    eprintln!("Panic occured: {:?}", &any_to_string(e));
                     return null_mut()
                 }
             }
@@ -33,7 +48,7 @@ macro_rules! ffi_export {
             match ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || $body)) {
                 Ok(x) => return x,
                 Err(e) => {
-                    eprintln!("Panic occured: {:?}", e);
+                    eprintln!("Panic occured: {:?}", &any_to_string(e));
                     return <$ret_ty as Default>::default()
                 }
             }
@@ -53,7 +68,7 @@ macro_rules! ffi_export {
             match ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || $body)) {
                 Ok(_) => {},
                 Err(e) => {
-                    eprintln!("Panic occured: {:?}", e);
+                    eprintln!("Panic occured: {:?}", &any_to_string(e));
                 }
             }
         }
@@ -75,8 +90,8 @@ macro_rules! ffi_export_with_ret_code {
             match ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| $body)) {
                 Ok(x) => return x,
                 Err(e) => {
-                    *$ret_code = CctpErrorCode::GenericError;
-                    eprintln!("Panic occured: {:?}", e);
+                    *$ret_code = CctpErrorCode::PanicOccured;
+                    eprintln!("Panic occured: {:?}", &any_to_string(e));
                     return null_mut()
                 }
             }
@@ -96,8 +111,8 @@ macro_rules! ffi_export_with_ret_code {
             match ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| $body)) {
                 Ok(x) => return x,
                 Err(e) => {
-                    *$ret_code = CctpErrorCode::GenericError;
-                    eprintln!("Panic occured: {:?}", e);
+                    *$ret_code = CctpErrorCode::PanicOccured;
+                    eprintln!("Panic occured: {:?}", &any_to_string(e));
                     return <$ret_ty as Default>::default()
                 }
             }
@@ -113,12 +128,12 @@ macro_rules! ffi_export_with_ret_code {
     ) => (
         #[no_mangle]
         $(#[$attr])*
-        pub extern "C" fn $fn_name($($arg : $arg_ty),*, $ret_code : $ret_code_ty) {
+        pub extern "C" fn $fn_name($($arg : $arg_ty),* $ret_code : $ret_code_ty) {
             match ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| $body)) {
                 Ok(_) => {},
                 Err(e) => {
-                    *$ret_code = CctpErrorCode::GenericError;
-                    eprintln!("Panic occured: {:?}", e);
+                    *$ret_code = CctpErrorCode::PanicOccured;
+                    eprintln!("Panic occured: {:?}", &any_to_string(e));
                 }
             }
         }
